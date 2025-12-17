@@ -50,7 +50,8 @@ __pycache__/
 *.pyo
 .venv/
 venv/
-
+.venv-win/
+venv-win/
 ./backend/agents/agent_test
 #local db
 *.db
