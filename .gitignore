@@ -1,0 +1,61 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# Runtime data
+*.pid
+*.seed
+*.pid.lock
+
+# Dependency directories
+node_modules/
+
+# Build output
+*/dist/
+*/build/
+*/out/
+*/.vite/
+
+# Environment files
+.env
+.env.*.local
+*/.env
+# Editor/IDE
+.vscode/
+.idea/
+*.sublime*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Misc
+*.tsbuildinfo
+.eslintcache
+.stylelintcache
+
+# Coverage
+coverage/
+*.lcov
+
+# Jupyter notebooks
+.ipynb_checkpoints
+
+# Python (if you run backend in same repo)
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+
+./backend/agents/agent_test
+#local db
+*.db
+
+
+deploy.sh
+#
+*/env.yaml
