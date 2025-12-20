@@ -97,7 +97,7 @@ async def run_full_system_test():
             continue
 
         for ex in day.exercises:
-            table.add_row(ex.name, f"{ex.sets}x{ex.reps}", ex.exerciseID)
+            table.add_row(ex.name, f"{ex.sets}x{ex.reps}", ex.exercise_id)
 
         console.print(table)
         rprint(f"[italic grey70]Coach Note: {day.coach_instructions}[/italic grey70]\n")
