@@ -18,8 +18,11 @@ Please extract the following values exactly. Look for English labels OR their Ch
    - **InBody Score (InBody 評分):** Usually a large number near the right side (e.g., 75, 80).
 
 4. **Segmental Lean Analysis (部位別肌肉分析):**
-   - Extract the mass (kg) for: Right Arm, Left Arm, Trunk, Right Leg, Left Leg.
-   - Ignore the percentage (%) values, we only want the kg.
+   - **Locate the Grid:** Find the section for Right Arm, Left Arm, Trunk, Right Leg, Left Leg.
+   - **Extract BOTH Values:** Each body part has TWO numbers.
+     - **kg:** The absolute mass (e.g., 3.5 kg).
+     - **%:** The percentage relative to ideal (e.g., 105.2 %).
+   - *Tip:* Ensure you map them correctly. Do not swap kg and %.
 
 5. **Curve Analysis (Visual Logic):**
    - Visualize the ends of the bars for **Weight**, **SMM**, and **Body Fat Mass**.
