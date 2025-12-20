@@ -24,10 +24,23 @@ class SegmentalAnalysis(BaseModel):
     """部位肌肉量 (用於偵測不平衡)"""
 
     right_arm_kg: Optional[float] = Field(None, description="Right Arm Lean Mass (kg)")
+    right_arm_percent: Optional[float] = Field(
+        None, description="Right Arm Lean Mass (%) - The number usually below the kg"
+    )
     left_arm_kg: Optional[float] = Field(None, description="Left Arm Lean Mass (kg)")
+    left_arm_percent: Optional[float] = Field(
+        None, description="Left Arm Lean Mass (%)"
+    )
     trunk_kg: Optional[float] = Field(None, description="Trunk Lean Mass (kg)")
+    trunk_percent: Optional[float] = Field(None, description="Trunk Lean Mass (%)")
     right_leg_kg: Optional[float] = Field(None, description="Right Leg Lean Mass (kg)")
+    right_leg_percent: Optional[float] = Field(
+        None, description="Right Leg Lean Mass (%)"
+    )
     left_leg_kg: Optional[float] = Field(None, description="Left Leg Lean Mass (kg)")
+    left_leg_percent: Optional[float] = Field(
+        None, description="Left Leg Lean Mass (%)"
+    )
 
 
 class InbodyMetrics(BaseModel):
@@ -45,7 +58,9 @@ class InbodyMetrics(BaseModel):
         ...,
         description="The shape formed by Weight/Muscle/Fat bars. Options: 'C-Shape', 'I-Shape', 'D-Shape'",
     )
-
+    activity_level: Literal[
+        "Sedentary", "Lightly Active", "Moderately Active", "Very Active"
+    ] = "Sedentary"
     segmental_muscle: Optional[SegmentalAnalysis] = Field(
         None,
         description="Muscle mass for specific body parts (Right/Left Arm, Trunk, Right/Left Leg)",
@@ -84,13 +99,76 @@ class UserProfile(BaseModel):
     name: Optional[str]
     gender: Literal["Male", "Female"]
     age: int = Field(..., gt=0, lt=120)
-
+    user_goal: Optional[str]
+    workout_frequency: int = Field(
+        default=3, ge=1, le=7, description="Number of days per week the user can train."
+    )
     injuries: list[str] = Field(
         default_factory=list, description="傷病史，如 ['knee_pain', 'lower_back']"
     )
-    activity_level: Literal[
-        "Sedentary", "Lightly Active", "Moderately Active", "Very Active"
-    ] = "Sedentary"
 
     latest_scan: Optional[InbodyMetrics] = None
-    # Body composition
+
+
+class DoctorSuggestion(BaseModel):
+    """
+    The medical prescription passed to the Strategy Planner.
+    """
+
+    target_focus_areas: list[str] = Field(
+        ...,
+        description="List of body parts to prioritize this week (e.g., 'Glutes', 'Triceps').",
+    )
+
+    safety_constraints: list[str] = Field(
+        ...,
+        description="Specific movements to AVOID based on injuries (e.g., 'Avoid deep squats due to knee pain').",
+    )
+
+    load_recommendation: str = Field(
+        ...,
+        description="Guidance on weight/RPE (e.g., 'Use 70% 1RM', 'Focus on time-under-tension', or specific weights if provided).",
+    )
+
+
+class ExerciseDetail(BaseModel):
+    exercise_id: str = Field(
+        ..., description="The ID of the excercise response from the API"
+    )
+    name: str = Field(..., description="Name of the exercise (e.g., 'Barbell Squat')")
+    sets: int = Field(..., description="Number of sets")
+    reps: str = Field(..., description="Rep range (e.g., '8-12' or 'AMRAP')")
+    note: Optional[str] = Field(None, description="Tips (e.g., 'Focus on depth')")
+    steps: Optional[list[str]] = Field(None, description="Move Steps")
+
+
+class DailyWorkout(BaseModel):
+    day: str = Field(..., description="Day of the week (e.g., 'Monday' or 'Day 1')")
+
+    # --- The Coach (Strategy Planner) Fills These ---
+    is_rest_day: bool = Field(False, description="True if this is a recovery day")
+    focus_area: str = Field(
+        ..., description="Target muscles (e.g., 'Legs - Quads focus')"
+    )
+    coach_instructions: str = Field(
+        ...,
+        description="Specific directive for this day (e.g., 'Keep intensity high, use drop sets').",
+    )
+
+    # --- The Curator (Worker) Fills This Later ---
+    need_exercise_generate: bool = Field(False)
+    exercises: list[ExerciseDetail] = Field(
+        default_factory=list, description="List of specific exercises"
+    )
+
+
+class WeeklyPlan(BaseModel):
+    plan_name: str = Field(
+        ..., description="Name of the split (e.g., 'PPL Hypertrophy Phase')"
+    )
+    goal_summary: str = Field(
+        ..., description="Brief explanation of why this plan fits the user."
+    )
+
+    # This list allows us to easily map-reduce later
+    schedule: list[DailyWorkout] = Field(..., description="List of 7 daily plans.")

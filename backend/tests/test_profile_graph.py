@@ -98,12 +98,21 @@ def run_graph_test():
             )
             seg_table.add_column("Body Part", style="cyan")
             seg_table.add_column("Mass", style="bold green")
+            seg_table.add_column("Balance (%)", style="bold yellow")
 
-            seg_table.add_row("Right Arm", f"{seg.right_arm_kg} kg")
-            seg_table.add_row("Left Arm", f"{seg.left_arm_kg} kg")
-            seg_table.add_row("Trunk (Core)", f"{seg.trunk_kg} kg")
-            seg_table.add_row("Right Leg", f"{seg.right_leg_kg} kg")
-            seg_table.add_row("Left Leg", f"{seg.left_leg_kg} kg")
+            seg_table.add_row(
+                "Right Arm", f"{seg.right_arm_kg}", f"{seg.right_arm_percent}%"
+            )
+            seg_table.add_row(
+                "Left Arm", f"{seg.left_arm_kg}", f"{seg.left_arm_percent}%"
+            )
+            seg_table.add_row("Trunk", f"{seg.trunk_kg}", f"{seg.trunk_percent}%")
+            seg_table.add_row(
+                "Right Leg", f"{seg.right_leg_kg}", f"{seg.right_leg_percent}%"
+            )
+            seg_table.add_row(
+                "Left Leg", f"{seg.left_leg_kg}", f"{seg.left_leg_percent}%"
+            )
 
             console.print(Panel(seg_table, expand=False, border_style="blue"))
         else:
