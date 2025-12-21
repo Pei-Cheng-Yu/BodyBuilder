@@ -1,0 +1,29 @@
+import uvicorn
+from app.routers import chat
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
+app = FastAPI(title="BodyBuilder AI Backend")
+
+# --- CORS Configuration ---
+# Allow requests from the frontend (React/Vite)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Allow all origins for development
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# --- Register Routers ---
+app.include_router(chat.router, prefix="/api")
+
+
+@app.get("/")
+def health_check():
+    return {"status": "ok", "message": "BodyBuilder API is running"}
+
+
+if __name__ == "__main__":
+    # Run with: python main.py
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
