@@ -1,0 +1,7 @@
+{
+  "dependencies": ["."],
+  "graphs": {
+    "consultant": "app.graph.agents.consultant.agent:build_consultant_graph"
+  },
+  "env": "../.env"
+}
