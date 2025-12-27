@@ -1,9 +1,10 @@
+import os
 from typing import Optional
 
 import requests
 from langchain_core.tools import tool
 
-BASE_URL = "https://www.exercisedb.dev/api/v1"
+BASE_URL = "https://exercisedb-api1.p.rapidapi.com/api/v1"
 
 
 def is_url_valid(url: str) -> bool:
@@ -22,12 +23,17 @@ def is_url_valid(url: str) -> bool:
         return False
 
 
+def normalize(value: Optional[str]) -> Optional[str]:
+    if value is None:
+        return None
+    value = value.strip()
+    return value if value else None
+
+
 @tool
 def search_exercise_tool(
-    target_muscle: Optional[str] = None,
     equipment: Optional[str] = None,
     body_part: Optional[str] = None,
-    offset: int = 0,
 ):
     """
     Search for fitness exercises based on muscle, equipment, or body part.
@@ -38,21 +44,27 @@ def search_exercise_tool(
         body_part: General area (e.g., 'waist', 'upper arms', 'chest').
         offset: Skip this many results. Use 0 for most popular, gentally plus 10 for variations.
     """
-    if target_muscle or equipment or body_part:
-        endpoint = f"{BASE_URL}/exercises/filter"
-        params = {
-            "muscles": target_muscle,
-            "equipment": equipment,
-            "bodyParts": body_part,
-            "limit": 10,  # Don't overwhelm the context window
-            "offset": offset,
-        }
-    else:
-        return "Error: You must provide at least one search parameter."
+    equipment = normalize(equipment)
+    body_part = normalize(body_part)
+    endpoint = f"{BASE_URL}/exercises"
+    headers = {
+        "x-rapidapi-key": os.getenv("RAPIDAPI_KEY"),
+        "x-rapidapi-host": "exercisedb-api1.p.rapidapi.com",
+    }
+    params = {
+        "limit": 10,
+    }
+
+    if equipment:
+        params["equipments"] = equipment
+    if body_part:
+        params["bodyParts"] = body_part
 
     try:
         print(f"🛠️ Content Curator searching: {endpoint} with {params}")
-        response = requests.get(endpoint, params=params)
+        response = requests.get(endpoint, params=params, headers=headers)
+        print(response.request.url)
+        print(response.status_code, response.text[:300])
         if response.status_code != 200:
             return f"API Error: {response.status_code}"
 
@@ -60,7 +72,7 @@ def search_exercise_tool(
         valid_results = []
 
         for ex in data:
-            gif_url = ex.get("gifUrl")
+            gif_url = ex.get("imageUrl")
 
             # --- VALIDATION STEP ---
             if is_url_valid(gif_url):
@@ -68,8 +80,6 @@ def search_exercise_tool(
                     {
                         "name": ex.get("name"),
                         "id": ex.get("exerciseId"),
-                        "instructions": " ".join(ex.get("instructions", [])),
-                        "gifUrl": gif_url,  # Now we include it because we know it works
                     }
                 )
 

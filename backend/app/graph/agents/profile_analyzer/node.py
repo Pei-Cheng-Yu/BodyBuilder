@@ -26,9 +26,17 @@ def inbody_analysis_node(state: GraphState):
             updated_profile = current_profile.model_copy(
                 update={"latest_scan": extracted_data}
             )
-            return {"profile": updated_profile, "inbody_pdf_input": None}
+            return {
+                "profile": updated_profile,
+                "inbody_pdf_input": None,
+                "is_dirty": True,
+            }
 
-        return {"latest_scan_data": extracted_data, "inbody_pdf_input": None}
+        return {
+            "latest_scan_data": extracted_data,
+            "inbody_pdf_input": None,
+            "is_dirty": True,
+        }
 
     except Exception as e:
         print(f"❌ LLM Invocation Failed: {e}")

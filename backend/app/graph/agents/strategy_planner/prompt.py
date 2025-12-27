@@ -2,12 +2,7 @@ from app.graph.constants import MUSCLE_GROUPS
 
 # Helper to format the dict into a readable string for the LLM
 # Output Example: "- BACK: lats, spine, traps..."
-formatted_anatomy = "\n".join(
-    [
-        f"- **{group.upper()}**: {', '.join(muscles)}"
-        for group, muscles in MUSCLE_GROUPS.items()
-    ]
-)
+
 
 STRATEGY_COACH_PROMPT = f"""
 You are an expert Strength & Conditioning Coach.
@@ -18,7 +13,7 @@ When defining the `focus_area` for each day, you **MUST** use the standard termi
 You can choose a **General Group** (Key) or a **Specific Muscle** (Value).
 
 **VALID ANATOMY MENU:**
-{formatted_anatomy}
+{MUSCLE_GROUPS}
 
 *Example:* If the user needs to train arms, output "upper arms" or "triceps", NOT "Arm Toning".
 

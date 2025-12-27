@@ -16,6 +16,7 @@ class DiagnosisNote(BaseModel):
     )
     # progress_report: this will gen from Bio-Feedback agent (not yet build)
     injuries: Optional[list[str]] = Field(None)
+    load: Optional[int] = Field(None)
     conclusion: Optional[str] = Field(None)
 
 
@@ -24,7 +25,14 @@ def get_weak_part_node(state: GraphState) -> DiagnosisNote:
     seg = state["profile"].latest_scan.segmental_muscle
     weak_parts = identify_weak_parts(seg)
     user_goal = state["profile"].user_goal
-    return {"weak_parts": weak_parts, "user_goal": user_goal}
+    injuries = state["profile"].injuries
+    load = state["profile"].load
+    return {
+        "weak_parts": weak_parts,
+        "user_goal": user_goal,
+        "injures": injuries,
+        "load": load,
+    }
 
 
 # def get_progress_node
@@ -36,4 +44,4 @@ async def conlude_suggestion_node(state: DiagnosisNote) -> GraphState:
     structured_llm = llm.with_structured_output(DoctorSuggestion)
 
     doctor_suggetsion = await structured_llm.ainvoke(prompt)
-    return {"doctor_suggestion": doctor_suggetsion}
+    return {"doctor_suggestion": doctor_suggetsion, "is_dirty": True}

@@ -115,4 +115,4 @@ def plan_reconstruct_node(state: TempState) -> GraphState:
         schedule=contructed_schedule,
     )
     print(f"✅ Plan Created: {final_plan.plan_name}")
-    return {"weekly_plan": final_plan}
+    return {"weekly_plan": final_plan, "needs_strategy": False, "is_dirty": True}
