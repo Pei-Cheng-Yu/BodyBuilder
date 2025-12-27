@@ -1,6 +1,6 @@
 from typing import Literal, Optional
 
-from pydantic import BaseModel, Field, computed_field
+from pydantic import BaseModel, ConfigDict, Field, computed_field
 
 
 class BasicScanMetrics(BaseModel):
@@ -96,17 +96,26 @@ class InbodyMetrics(BaseModel):
 
 
 class UserProfile(BaseModel):
-    name: Optional[str]
-    gender: Literal["Male", "Female"]
-    age: int = Field(..., gt=0, lt=120)
-    user_goal: Optional[str]
+    model_config = ConfigDict(from_attributes=True)
+    gender: Optional[Literal["Male", "Female"]] = None
+    age: Optional[int] = Field(default=18, gt=0, lt=120)
+    user_goal: Optional[str] = None
     workout_frequency: int = Field(
         default=3, ge=1, le=7, description="Number of days per week the user can train."
     )
     injuries: list[str] = Field(
         default_factory=list, description="傷病史，如 ['knee_pain', 'lower_back']"
     )
+    load: Optional[int] = None
+    training_location: Optional[Literal["gym", "home", "both"]] = "gym"
 
+    available_equipment: list[str] = Field(
+        default_factory=list,
+        description="Equipment the user can use, e.g. ['barbell','dumbbell','cable','machines']",
+    )
+    avoid_equipment: list[str] = Field(
+        default_factory=list, description="Equipment to avoid, e.g. ['barbell']"
+    )
     latest_scan: Optional[InbodyMetrics] = None
 
 
@@ -115,6 +124,7 @@ class DoctorSuggestion(BaseModel):
     The medical prescription passed to the Strategy Planner.
     """
 
+    model_config = ConfigDict(from_attributes=True)
     target_focus_areas: list[str] = Field(
         ...,
         description="List of body parts to prioritize this week (e.g., 'Glutes', 'Triceps').",
@@ -139,7 +149,6 @@ class ExerciseDetail(BaseModel):
     sets: int = Field(..., description="Number of sets")
     reps: str = Field(..., description="Rep range (e.g., '8-12' or 'AMRAP')")
     note: Optional[str] = Field(None, description="Tips (e.g., 'Focus on depth')")
-    steps: Optional[list[str]] = Field(None, description="Move Steps")
 
 
 class DailyWorkout(BaseModel):
@@ -160,9 +169,13 @@ class DailyWorkout(BaseModel):
     exercises: list[ExerciseDetail] = Field(
         default_factory=list, description="List of specific exercises"
     )
+    user_instruction: Optional[str] = Field(
+        None, description="User requested adjustment for this day only"
+    )
 
 
 class WeeklyPlan(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
     plan_name: str = Field(
         ..., description="Name of the split (e.g., 'PPL Hypertrophy Phase')"
     )

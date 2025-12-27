@@ -18,7 +18,7 @@ node_modules/
 */build/
 */out/
 */.vite/
-
+.langgraph_api/
 # Environment files
 .env
 .env.*.local
@@ -48,6 +48,7 @@ coverage/
 __pycache__/
 *.py[cod]
 *.pyo
+.env.test
 .venv/
 venv/
 .venv-win/

@@ -1,5 +1,6 @@
 from typing import Optional
 
+from app.graph.constants import MUSCLE_GROUPS, STANDARD_EQUIPMENT
 from app.graph.llm.ollama import get_ollama, get_ollama_gpt_120
 from app.graph.schema import DailyWorkout, ExerciseDetail
 from app.graph.state import GraphState
@@ -10,6 +11,9 @@ from pydantic import BaseModel, Field
 
 from .prompt import CURATOR_PROMPT
 from .tool import search_exercise_tool
+from .utils import extract_exercise_ids, human_and_tool_only
+
+MAX_EXERCISES = 6
 
 
 class WorkoutFills(BaseModel):
@@ -29,7 +33,14 @@ def distribute_exercise(state: GraphState):
     print("Start Distribute Exercise Generation")
     weekly_plan = state["weekly_plan"].schedule
     safety_constraints = state["doctor_suggestion"].safety_constraints
-
+    profile = state["profile"]
+    system_prompt = CURATOR_PROMPT.format(
+        training_location=profile.training_location or "unknown",
+        available_equipment=", ".join(profile.available_equipment) or "none",
+        avoid_equipment=", ".join(profile.avoid_equipment) or "none",
+        body_parts=", ".join(MUSCLE_GROUPS),
+        equipment_list=", ".join(STANDARD_EQUIPMENT),
+    )
     tasks = []
     for daily_plan in weekly_plan:
         if daily_plan.need_exercise_generate and not daily_plan.is_rest_day:
@@ -40,6 +51,7 @@ def distribute_exercise(state: GraphState):
                 - FOCUS AREA: {daily_plan.focus_area}
                 - COACH INSTRUCTIONS: {daily_plan.coach_instructions}
                 - SAFETY CONSTRAINTS: {safety_constraints}
+                User Requestion that must fulfill: {daily_plan.user_instruction}
                 """
             )
 
@@ -49,7 +61,7 @@ def distribute_exercise(state: GraphState):
                     "curator_worker",
                     {
                         "messages": [
-                            SystemMessage(content=CURATOR_PROMPT),
+                            SystemMessage(content=system_prompt),
                             context_message,
                         ],
                         "daily_plan": daily_plan,
@@ -61,15 +73,42 @@ def distribute_exercise(state: GraphState):
 
 
 async def curator_agent(state: CuratorState):
+    messages = state["messages"]
+    used = extract_exercise_ids(messages)
+
+    if len(used) >= MAX_EXERCISES:
+        print(f"🛑 Tool call limit reached ({len(used)}). Running WITHOUT tools.")
+        extraction_prompt = SystemMessage(
+            content="""
+            Review the history, there is many tool call response and Human request,
+            output the final exercise list in JSON format
+
+            ### OUTPUT SCHEMA
+            You must provide the following fields for each exercise:
+            - `exercise_id`: (string) The raw ID from the tool.
+            - `name`: (string) Full exercise name.
+            - `sets`: (integer) Total sets.
+            - `reps`: (string) e.g., "8-12".
+            - `note`: (string) One safety cue.
+        """
+        )
+        llm = get_ollama_gpt_120()  # no bind_tools
+        safe_messages = human_and_tool_only(messages)
+
+        response = await llm.ainvoke(safe_messages + [extraction_prompt])
+        return {"messages": [response]}
+
+    # normal path (tools allowed)
     llm = get_ollama_gpt_120().bind_tools([search_exercise_tool])
-    # The agent just processes the messages in its private state
-    response = await llm.ainvoke(state["messages"])
-    if response.tool_calls:
+    response = await llm.ainvoke(messages)
+
+    if getattr(response, "tool_calls", None):
         print(
             f"🎯 Agent decided to call tools: {[t['name'] for t in response.tool_calls]}"
         )
     else:
         print("⚠️ Agent DID NOT call any tools!")
+
     return {"messages": [response]}
 
 
@@ -89,7 +128,6 @@ async def formalizer_node(state: CuratorState) -> GraphState:
         - `sets`: (integer) Total sets.
         - `reps`: (string) e.g., "8-12".
         - `note`: (string) One safety cue.
-        - `steps`: (list of strings) The instructions.
     """
     )
     llm = get_ollama_gpt_120()
@@ -142,4 +180,9 @@ def plan_compiler_node(state: GraphState):
     updated_plan = state["weekly_plan"]
     updated_plan.schedule = final_schedule
 
-    return {"weekly_plan": updated_plan, "curated_results": []}
+    return {
+        "weekly_plan": updated_plan,
+        "curated_results": [],
+        "regen_days": None,
+        "is_dirty": True,
+    }
