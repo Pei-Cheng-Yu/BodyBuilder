@@ -2,7 +2,7 @@ from app.db.config import settings
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 engine = create_async_engine(
-    settings.DATABASE_URL,
+    settings.database_url,
     echo=False,  # Set True to see SQL logs in console
     pool_pre_ping=True,  # Handles dropped connections automatically
 )
