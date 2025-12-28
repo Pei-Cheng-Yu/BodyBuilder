@@ -38,10 +38,11 @@ repos:
     rev: v9.1.1
     hooks:
       - id: eslint
+        args: ["--config", "frontend/eslint.config.js"]
         files: \.[jt]sx?$  # Matches .js, .jsx, .ts, .tsx
         types: [file]
         additional_dependencies:
-          - eslint@8.57.0
+          - eslint@^9.0.0
           - eslint-plugin-react@latest
           - eslint-plugin-react-hooks@latest
           - eslint-plugin-react-refresh@latest
