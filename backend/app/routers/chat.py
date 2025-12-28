@@ -1,6 +1,8 @@
 from typing import Dict, List
 
-from fastapi import APIRouter
+from app.auth.protected import get_current_user
+from app.db.models.user import User
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 
 router = APIRouter()
@@ -21,16 +23,29 @@ class ChatResponse(BaseModel):
 
 
 @router.post("/chat", response_model=ChatResponse)
-async def chat_endpoint(request: ChatRequest):
-    # 1. Store User Message
-    CHAT_HISTORY.append({"role": "user", "content": request.message})
+async def chat_endpoint(
+    request: ChatRequest,
+    current_user: User = Depends(get_current_user),
+):
+    CHAT_HISTORY.append(
+        {
+            "role": "user",
+            "user_id": str(current_user.id),
+            "content": request.message,
+        }
+    )
 
-    # 2. Generate Reply (Mock Logic for now)
+    # 2. Generate Reply
     reply_text = (
-        f"Backend Received: {request.message} (History Size: {len(CHAT_HISTORY)})"
+        f"User {current_user.email}: {request.message} "
+        f"(History Size: {len(CHAT_HISTORY)})"
     )
 
     # 3. Store Assistant Message
-    CHAT_HISTORY.append({"role": "assistant", "content": reply_text})
-
+    CHAT_HISTORY.append(
+        {
+            "role": "assistant",
+            "content": reply_text,
+        }
+    )
     return ChatResponse(reply=reply_text)

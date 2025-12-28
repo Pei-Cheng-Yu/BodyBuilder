@@ -1,6 +1,7 @@
 import asyncio
 from logging.config import fileConfig
 
+import app.db.models  # noqa: F401
 from alembic import context
 
 # 2. Import your metadata and all models
