@@ -1,7 +1,9 @@
 alembic==1.17.2
+annotated-doc==0.0.4
 annotated-types==0.7.0
 anyio==4.12.0
 asyncpg==0.31.0
+bcrypt==4.0.1
 blockbuster==1.5.26
 cachetools==6.2.4
 certifi==2025.11.12
@@ -10,7 +12,11 @@ click==8.3.1
 cloudpickle==3.1.2
 cryptography==46.0.3
 distro==1.9.0
+dnspython==2.8.0
 dydantic==0.0.8
+ecdsa==0.19.1
+email-validator==2.3.0
+fastapi==0.128.0
 filetype==1.2.0
 forbiddenfruit==0.1.4
 google-auth==2.45.0
@@ -53,6 +59,7 @@ opentelemetry-semantic-conventions==0.60b1
 orjson==3.11.5
 ormsgpack==1.12.1
 packaging==25.0
+passlib==1.7.4
 pillow==12.0.0
 pluggy==1.6.0
 protobuf==6.33.2
@@ -69,11 +76,14 @@ pytest==9.0.2
 pytest-asyncio==1.3.0
 pytest-mock==3.15.1
 python-dotenv==1.2.1
+python-jose==3.5.0
+python-multipart==0.0.21
 PyYAML==6.0.3
 requests==2.32.5
 requests-toolbelt==1.0.0
 rich==14.2.0
 rsa==4.9.1
+six==1.17.0
 sniffio==1.3.1
 SQLAlchemy==2.0.45
 sse-starlette==2.1.3
