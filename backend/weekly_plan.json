@@ -1,0 +1,177 @@
+{
+  "schedule": [
+    {
+      "day": "Monday",
+      "exercises": [
+        {
+          "name": "Palms In Incline Bench Press",
+          "note": "Keep elbows tucked and maintain strict form to protect the shoulders.",
+          "reps": "3-5",
+          "sets": 4,
+          "exercise_id": "exr_41n2hsVHu7B1MTdr"
+        },
+        {
+          "name": "Dumbbell Lying Floor Skull Crusher",
+          "note": "Control the weight on the way down and avoid locking elbows at the top.",
+          "reps": "3-5",
+          "sets": 4,
+          "exercise_id": "exr_41n2hdHtZrMPkcqY"
+        },
+        {
+          "name": "Dumbbell Incline One Arm Hammer Press",
+          "note": "Press straight up without excessive wrist flexion to keep joint safe.",
+          "reps": "3-5",
+          "sets": 4,
+          "exercise_id": "exr_41n2haNJ3NA8yCE2"
+        }
+      ],
+      "focus_area": "upper arms",
+      "is_rest_day": false,
+      "coach_instructions": "Begin the week with a dedicated upper‑arms session. Perform heavy compound arm movements such as close‑grip bench press, weighted chin‑ups, and overhead triceps extensions. Keep RPE 8‑9 and 3‑5 reps per set, resting 2‑3 minutes between sets. Focus on both left and right arms equally, using strict form and progressive overload.",
+      "need_exercise_generate": false
+    },
+    {
+      "day": "Tuesday",
+      "exercises": [],
+      "focus_area": "rest",
+      "is_rest_day": true,
+      "coach_instructions": "Rest and recovery. Light mobility work or gentle cardio is acceptable if desired, but avoid any heavy lifting.",
+      "need_exercise_generate": true
+    },
+    {
+      "day": "Wednesday",
+      "exercises": [
+        {
+          "name": "Lying Double Legs Biceps Curl with Towel",
+          "note": "Keep your elbows close to your torso and avoid swinging the towel.",
+          "reps": "10-12",
+          "sets": 3,
+          "exercise_id": "exr_41n2hc2VrB8ofxrW"
+        },
+        {
+          "name": "Right Cross. Boxing",
+          "note": "Maintain a stable stance and keep your wrist straight on impact.",
+          "reps": "30 sec",
+          "sets": 3,
+          "exercise_id": "exr_41n2hdo2vCtq4F3E"
+        },
+        {
+          "name": "Clap Push Up",
+          "note": "Land softly with elbows slightly bent to protect the shoulders.",
+          "reps": "8-10",
+          "sets": 3,
+          "exercise_id": "exr_41n2hkmMrSwcHkZ8"
+        },
+        {
+          "name": "Left hook. Boxing",
+          "note": "Rotate from the hips, keeping the elbow at shoulder height.",
+          "reps": "30 sec",
+          "sets": 3,
+          "exercise_id": "exr_41n2hM8vgMA6MREd"
+        },
+        {
+          "name": "Shoulder Tap Push-up",
+          "note": "Keep your core tight to avoid hip rotation.",
+          "reps": "10-12",
+          "sets": 3,
+          "exercise_id": "exr_41n2hnAGfMhp95LQ"
+        },
+        {
+          "name": "Two Legs Hammer Curl with Towel",
+          "note": "Control the movement; avoid using momentum to lift the towel.",
+          "reps": "10-12",
+          "sets": 3,
+          "exercise_id": "exr_41n2hqjVS3nwBoyr"
+        },
+        {
+          "name": "Dumbbell Clean and Press",
+          "note": "Maintain a neutral spine and lock out elbows at the top.",
+          "reps": "8-10",
+          "sets": 3,
+          "exercise_id": "exr_41n2hXfpvSshoXWG"
+        }
+      ],
+      "focus_area": "upper arms",
+      "is_rest_day": false,
+      "coach_instructions": "Return to the arms with a different stimulus: heavy curls, skull crushers, and hammer curls. Maintain RPE 8‑9 and 3‑5 reps per set, with 2‑3 minutes of rest between sets. Emphasize controlled eccentric phases and full range of motion.",
+      "need_exercise_generate": false
+    },
+    {
+      "day": "Thursday",
+      "exercises": [],
+      "focus_area": "rest",
+      "is_rest_day": true,
+      "coach_instructions": "Rest day. Focus on nutrition, hydration, and sleep to support recovery.",
+      "need_exercise_generate": true
+    },
+    {
+      "day": "Friday",
+      "exercises": [
+        {
+          "name": "Lateral Raise",
+          "note": "Maintain a slight bend in the elbows and avoid using momentum.",
+          "reps": "10-12",
+          "sets": 3,
+          "exercise_id": "exr_41n2hjuGpcex14w7"
+        },
+        {
+          "name": "Arnold Press",
+          "note": "Keep the wrists neutral and press directly overhead.",
+          "reps": "8-10",
+          "sets": 3,
+          "exercise_id": "exr_41n2hMRXm49mM62z"
+        },
+        {
+          "name": "Front Raise",
+          "note": "Lift with the shoulders, not the lower back, and keep the core engaged.",
+          "reps": "10-12",
+          "sets": 3,
+          "exercise_id": "exr_41n2howQHvcrcrW6"
+        },
+        {
+          "name": "Seated Shoulder Press",
+          "note": "Sit tall, keep the back against the bench, and press evenly.",
+          "reps": "8-10",
+          "sets": 3,
+          "exercise_id": "exr_41n2hs6camM22yBG"
+        },
+        {
+          "name": "Dumbbell Clean and Press",
+          "note": "Use a controlled clean; avoid jerking the weight overhead.",
+          "reps": "6-8",
+          "sets": 3,
+          "exercise_id": "exr_41n2hXfpvSshoXWG"
+        },
+        {
+          "name": "Dumbbell Rear Delt Fly",
+          "note": "Maintain a flat back and focus on squeezing the rear delts.",
+          "reps": "12-15",
+          "sets": 3,
+          "exercise_id": "exr_41n2hyNf5GebszTf"
+        }
+      ],
+      "focus_area": "full body",
+      "is_rest_day": false,
+      "coach_instructions": "Conclude the week with a full‑body strength session: back squats, deadlifts, bench press, and overhead press. Keep RPE 8‑9 and 3‑5 reps per set, resting 2‑3 minutes between sets. This session reinforces overall strength while allowing the arms to recover.",
+      "need_exercise_generate": false
+    },
+    {
+      "day": "Saturday",
+      "exercises": [],
+      "focus_area": "rest",
+      "is_rest_day": true,
+      "coach_instructions": "Rest and active recovery. Gentle stretching or yoga can aid mobility.",
+      "need_exercise_generate": true
+    },
+    {
+      "day": "Sunday",
+      "exercises": [],
+      "focus_area": "rest",
+      "is_rest_day": true,
+      "coach_instructions": "Rest day. Prepare for the next week with adequate sleep and nutrition.",
+      "need_exercise_generate": true
+    }
+  ],
+  "plan_name": "Upper Arm Strength Phase",
+  "goal_summary": "This plan prioritizes strength gains for the left and right arms while maintaining overall muscular balance. It uses high intensity (RPE 8‑9) and low‑rep (3‑5 reps) training to maximize hypertrophy and neural adaptations."
+}
