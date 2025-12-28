@@ -151,6 +151,41 @@ class ExerciseDetail(BaseModel):
     note: Optional[str] = Field(None, description="Tips (e.g., 'Focus on depth')")
 
 
+Nutrient = Literal["protein", "carbs", "fat", "water", "fiber"]
+
+
+class PortionGuide(BaseModel):
+
+    protein: Optional[int] = None
+    carbs: Optional[int] = None
+    fat: Optional[int] = None
+    water: Optional[int] = None
+    fiber: Optional[int] = None
+
+
+class NutritionHint(BaseModel):
+    """
+    Minimal Nutrition Hint:
+    - priority: what to focus on
+    - portion_guide: target ranges
+    - options: concrete food choices
+    """
+
+    priority: list[Nutrient] = Field(
+        ...,
+        min_length=1,
+        max_length=5,
+        description="Ordered list of nutrition priorities",
+    )
+    portion_guide: PortionGuide = Field(
+        default_factory=PortionGuide,
+        description="Recommended intake ranges for this hint",
+    )
+    options: list[str] = Field(
+        default_factory=list, max_length=6, description="Concrete food options"
+    )
+
+
 class DailyWorkout(BaseModel):
     day: str = Field(..., description="Day of the week (e.g., 'Monday' or 'Day 1')")
 
@@ -172,6 +207,7 @@ class DailyWorkout(BaseModel):
     user_instruction: Optional[str] = Field(
         None, description="User requested adjustment for this day only"
     )
+    nutrition_hint: Optional[NutritionHint]
 
 
 class WeeklyPlan(BaseModel):
