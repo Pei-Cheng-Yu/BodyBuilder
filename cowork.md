@@ -19,7 +19,7 @@ We use a **Pull Request (PR)** workflow. Developers work on isolated feature bra
 2.  **Branching**: Always sync with main before starting:
     ```bash
     git checkout main
-    git pull origin main
+    git pull origin main --rebase
     git checkout -b <feature-branch-name>
     ```
 3.  **Commit**:
@@ -69,11 +69,12 @@ If a merge conflict occurs:
 2.  **Local Resolution**:
     ```bash
     git checkout <your-branch>
-    git pull origin main  # or git rebase main
-    # Fix conflicts in editor
+    git fetch origin
+    git rebase origin/main
+    # Fix conflicts in editor, then run:
     git add .
-    git commit
-    git push origin <your-branch>
+    git rebase --continue
+    git push --force-with-lease origin <your-branch>
     ```
 
 ---
