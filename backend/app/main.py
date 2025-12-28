@@ -1,4 +1,5 @@
 import uvicorn
+from app.auth import routes as auth
 from app.routers import chat
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -17,6 +18,7 @@ app.add_middleware(
 
 # --- Register Routers ---
 app.include_router(chat.router, prefix="/api")
+app.include_router(auth.router, prefix="/api/auth")
 
 
 @app.get("/")
