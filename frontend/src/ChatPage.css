@@ -1,0 +1,147 @@
+/* 整個聊天室容器 */
+.chat-container {
+  display: flex;
+  flex-direction: column;
+  /* 這裡很重要 */
+  width: 100%; 
+  height: 100%; /* 因為父層 #root 已經是 100% 高度，這裡用 100% 即可 */
+  flex: 1; /* 確保佔滿父容器剩餘空間 */
+  
+  background-color: #f5f7fa;
+  /* 其他樣式保持不變... */
+}
+
+/* 頂部標題 */
+.chat-header {
+  background-color: #ffffff;
+  padding: 15px 20px;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+  text-align: center;
+  z-index: 10;
+}
+.chat-header h1 {
+  margin: 0;
+  font-size: 1.2rem;
+  color: #333;
+}
+
+/* 訊息滾動區：佔滿剩餘空間 */
+.messages-area {
+  flex: 1;
+  padding: 20px;
+  overflow-y: auto; /* 允許垂直捲動 */
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+/* 訊息排列邏輯 */
+.message-row {
+  display: flex;
+  width: 100%;
+}
+.user-row {
+  justify-content: flex-end; /* 用戶靠右 */
+}
+.ai-row {
+  justify-content: flex-start; /* AI 靠左 */
+}
+
+/* 氣泡樣式 */
+.message-bubble {
+  max-width: 70%;
+  padding: 12px 16px;
+  border-radius: 18px;
+  font-size: 1rem;
+  line-height: 1.5;
+  position: relative;
+  word-wrap: break-word;
+}
+
+/* 用戶氣泡顏色 (藍色) */
+.message-bubble.user {
+  background-color: #007bff;
+  color: white;
+  border-bottom-right-radius: 4px; /* 小尖角效果 */
+}
+
+/* AI 氣泡顏色 (灰色) */
+.message-bubble.assistant {
+  background-color: #e9ecef;
+  color: #333;
+  border-bottom-left-radius: 4px;
+}
+
+/* 底部輸入區 */
+.input-area {
+  background-color: white;
+  padding: 15px;
+  display: flex;
+  gap: 10px;
+  border-top: 1px solid #ddd;
+}
+
+.input-area input {
+  flex: 1;
+  padding: 12px;
+  border: 1px solid #ddd;
+  border-radius: 25px;
+  outline: none;
+  font-size: 1rem;
+}
+
+.input-area input:focus {
+  border-color: #007bff;
+}
+
+.input-area button {
+  /* 關鍵：使用 flex 讓圖示居中 */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  
+  /* 讓按鈕變成正圓形 */
+  width: 45px;
+  height: 45px;
+  padding: 0; /* 移除原本的左右 padding */
+  border: none;
+  border-radius: 50%; /* 圓形邊框 */
+  
+  background-color: #007bff;
+  color: white;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.input-area button:hover {
+  background-color: #0056b3;
+  transform: scale(1.05); /* 增加一個微小的放大效果 */
+}
+
+.input-area button:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* 針對 SVG 圖示的小微調 */
+.input-area button svg {
+  /* 視覺微調：紙飛機通常重心偏左，往右移 2px 會看起來更平衡 */
+  margin-left: 2px; 
+}
+/* Loading 動畫的三個點 */
+.loading-bubble {
+  display: flex;
+  gap: 4px;
+  color: #666;
+}
+.dot {
+  animation: bounce 1.4s infinite ease-in-out both;
+}
+.dot:nth-child(1) { animation-delay: -0.32s; }
+.dot:nth-child(2) { animation-delay: -0.16s; }
+
+@keyframes bounce {
+  0%, 80%, 100% { transform: scale(0); }
+  40% { transform: scale(1); }
+}

@@ -26,3 +26,26 @@ repos:
     rev: 24.3.0
     hooks:
       - id: black
+
+  - repo: https://github.com/pre-commit/mirrors-prettier
+    rev: v4.0.0-alpha.8
+    hooks:
+      - id: prettier
+        # Targets frontend files specifically
+        types_or: [javascript, jsx, ts, tsx, css, scss, html]
+
+  - repo: https://github.com/pre-commit/mirrors-eslint
+    rev: v9.1.1
+    hooks:
+      - id: eslint
+        files: \.[jt]sx?$  # Matches .js, .jsx, .ts, .tsx
+        types: [file]
+        additional_dependencies:
+          - eslint@8.57.0
+          - eslint-plugin-react@latest
+          - eslint-plugin-react-hooks@latest
+          - eslint-plugin-react-refresh@latest
+          - "@typescript-eslint/eslint-plugin@latest"
+          - "@typescript-eslint/parser@latest"
+          - globals@latest
+          - "@eslint/js@latest"

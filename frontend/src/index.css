@@ -1,0 +1,27 @@
+:root {
+  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+}
+
+/* 1. 確保 html 和 body 沒有任何邊距且滿版 */
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden; /* 防止出現雙重捲軸 */
+}
+
+/* 2. 針對兇手 #root 進行強制撐開 */
+#root {
+  width: 100vw;       /* 寬度：視窗寬度 */
+  height: 100vh;      /* 高度：視窗高度 */
+  max-width: none;    /* 重要！移除預設的寬度限制 */
+  margin: 0;          /* 移除預設的 auto margin */
+  padding: 0;         /* 移除內距 */
+  text-align: left;   /* 移除預設的置中對齊 */
+  
+  display: flex;      /* 讓裡面的 .chat-container 可以用 flex */
+  flex-direction: column;
+}
