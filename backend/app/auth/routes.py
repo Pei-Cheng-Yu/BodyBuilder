@@ -1,6 +1,7 @@
+from app.auth.protected import get_current_user
 from app.db.models.user import User
 from app.db.session import get_db
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Response
 from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy import select
@@ -47,7 +48,9 @@ async def signup(data: SignupRequest, db: AsyncSession = Depends(get_db)):
 
 @router.post("/token")
 async def login(
-    form: OAuth2PasswordRequestForm = Depends(), db: AsyncSession = Depends(get_db)
+    response: Response,
+    form: OAuth2PasswordRequestForm = Depends(),
+    db: AsyncSession = Depends(get_db),
 ):
     stmt = select(User).where(User.username == form.username)
     result = await db.execute(stmt)
@@ -57,4 +60,34 @@ async def login(
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
     token = create_access_token({"sub": str(user.id)})
-    return {"access_token": token, "token_type": "bearer"}
+
+    # ⭐ NEW: set HttpOnly cookie for browser + SSE
+    response.set_cookie(
+        key="access_token",
+        value=token,
+        httponly=True,
+        secure=False,  # True in HTTPS production
+        samesite="lax",  # REQUIRED for SSE
+        max_age=60 * 60 * 12,
+        path="/",
+    )
+
+    # ✅ Keep returning token for non-browser clients (Postman, mobile, etc.)
+    return {
+        "access_token": token,
+        "token_type": "bearer",
+    }
+
+
+@router.get("/me")
+async def get_me(current_user: User = Depends(get_current_user)):
+    return {
+        "id": current_user.id,
+        "username": current_user.username,
+    }
+
+
+@router.post("/logout")
+def logout(response: Response):
+    response.delete_cookie("access_token", path="/")
+    return {"message": "logged out"}
