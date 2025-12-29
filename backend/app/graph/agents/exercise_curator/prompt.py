@@ -49,7 +49,6 @@ You must provide the following fields for each exercise:
 - `name`: (string) Full exercise name.
 - `sets`: (integer) Total sets.
 - `reps`: (string) e.g., "8-12".
-- `note`: (string) One safety cue.
 In JSON type
 ### CONSTRAINTS
 - DO NOT invent exercises.

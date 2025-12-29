@@ -93,7 +93,6 @@ async def curator_agent(state: CuratorState):
             - `name`: (string) Full exercise name.
             - `sets`: (integer) Total sets.
             - `reps`: (string) e.g., "8-12".
-            - `note`: (string) One safety cue.
         """
         )
         llm = get_ollama_gpt_120()  # no bind_tools
@@ -131,12 +130,11 @@ async def formalizer_node(state: CuratorState) -> GraphState:
         - `name`: (string) Full exercise name.
         - `sets`: (integer) Total sets.
         - `reps`: (string) e.g., "8-12".
-        - `note`: (string) One safety cue.
     """
     )
     llm = get_ollama_gpt_120()
 
-    messages = state["messages"][-4:-1] + [extraction_prompt]
+    messages = state["messages"][-4:] + [extraction_prompt]
     response = await llm.ainvoke(messages)
 
     gemma = get_ollama()  # Local

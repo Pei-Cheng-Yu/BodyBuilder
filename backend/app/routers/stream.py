@@ -6,7 +6,7 @@ from typing import Optional
 from app.auth.protected import get_current_user
 from app.db.models.user import User
 from app.graph.agents.consultant.agent import build_consultant_graph
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, File, Form, UploadFile
 from fastapi.responses import StreamingResponse
 from langchain_core.messages import AIMessage
 
@@ -67,27 +67,38 @@ def ai_content_to_text(content):
     return str(content)
 
 
-@router.get("/chat/stream")
+@router.post("/chat/stream")
 async def chat_stream(
-    message: str,
-    thread_id: Optional[str] = None,
+    message: str = Form(""),
+    inbody_pdf: Optional[UploadFile] = File(None),
     current_user: User = Depends(get_current_user),
 ):
 
     graph = build_consultant_graph()
-    config_thread_id = thread_id or str(uuid.uuid4())
+    config_thread_id = str(uuid.uuid4())
     user_id = current_user.id
+    inbody_pdf_bytes: Optional[bytes] = None
+    extra_messages = ""
+
+    if inbody_pdf is not None:
+        inbody_pdf_bytes = await inbody_pdf.read()
+        extra_messages = "\n\nI just uploaded my InBody report PDF. Please analyze it."
 
     async def event_generator():
         try:
             # 1️⃣ Start
             yield f"data: {json.dumps({'type': 'start', 'thread_id': config_thread_id})}\n\n"
+            graph_input = {
+                "user_id": user_id,
+                "messages": [{"role": "user", "content": message + extra_messages}],
+            }
+
+            # Only add if provided
+            if inbody_pdf_bytes is not None:
+                graph_input["inbody_pdf_input"] = inbody_pdf_bytes
 
             async for update in graph.astream(
-                {
-                    "user_id": user_id,
-                    "messages": [{"role": "user", "content": message}],
-                },
+                graph_input,
                 config={"configurable": {"thread_id": config_thread_id}},
                 stream_mode="updates",
             ):

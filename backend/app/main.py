@@ -1,6 +1,6 @@
 import uvicorn
 from app.auth import routes as auth
-from app.routers import exercise_detail, stream
+from app.routers import exercise_detail, stream, plan
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -21,6 +21,7 @@ app.add_middleware(
 app.include_router(auth.router, prefix="/api/auth")
 app.include_router(exercise_detail.router, prefix="/api")
 app.include_router(stream.router, prefix="/api")
+app.include_router(plan.router, prefix="/api", tags=["Plans"])
 
 
 @app.get("/")
