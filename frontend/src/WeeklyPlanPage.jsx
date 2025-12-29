@@ -1,5 +1,6 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import "./WeeklyPlanPage.css";
+const API_BASE = import.meta.env.VITE_API_URL;
 const EXERCISE_CACHE_PREFIX = "exercise:";
 const CACHE_TTL = 1000 * 60 * 60 * 24 * 7;
 const DAYS = [
@@ -12,25 +13,6 @@ const DAYS = [
   "Sunday",
 ];
 
-const INITIAL_DATA = [
-  {
-    id: "block-1",
-    day: "Monday",
-    title: "胸部與三頭訓練",
-    exercises: [
-      { id: "exr_41n2hdo2vCtq4F3E", title: "臥推", sets: "4x10" },
-      { id: "exr_41n2hdo2vCtq4F3E", title: "啞鈴飛鳥", sets: "3x12" },
-    ],
-  },
-  {
-    id: "block-2",
-    day: "Wednesday",
-    title: "背部與二頭訓練",
-    exercises: [
-      { id: "exr_41n2hdo2vCtq4F3E", title: "引體向上", sets: "3xMax" },
-    ],
-  },
-];
 function getCachedExercise(exerciseId) {
   const raw = localStorage.getItem(EXERCISE_CACHE_PREFIX + exerciseId);
   if (!raw) return null;
@@ -59,14 +41,65 @@ function setCachedExercise(exerciseId, data) {
   );
 }
 
+async function patchBlockDay(blockId, day) {
+  const res = await fetch(`${API_BASE}/blocks/${blockId}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify({ day }),
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
+async function patchMoveExercise(exerciseInstanceId, blockId, order) {
+  const res = await fetch(`${API_BASE}/exercises/move/${exerciseInstanceId}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify({ blockId, order }),
+  });
+  if (!res.ok) {
+    const t = await res.text();
+    console.log("❌ move exercise error:", t);
+    throw new Error(t);
+  }
+  return res.json();
+}
+
 const WeeklyPlanPage = () => {
-  const [blocks, setBlocks] = useState(INITIAL_DATA);
+  const [blocks, setBlocks] = useState(null);
   const [draggedItem, setDraggedItem] = useState(null);
 
   // 優化狀態：搜尋中與彈出視窗資料
   const [isSearching, setIsSearching] = useState(false);
   const [modalData, setModalData] = useState(null);
 
+  useEffect(() => {
+    const loadPlan = async () => {
+      try {
+        const res = await fetch(`${API_BASE}/plans`, {
+          method: "GET",
+          credentials: "include",
+        });
+
+        if (!res.ok) {
+          const t = await res.text();
+          throw new Error(`HTTP ${res.status}: ${t}`);
+        }
+
+        const data = await res.json();
+
+        // backend guarantees frontend format
+        setBlocks(Array.isArray(data) ? data : []);
+      } catch (err) {
+        console.error("Failed to load weekly plan:", err);
+        setBlocks([]); // fallback = no plan
+      }
+    };
+
+    loadPlan();
+  }, []);
   // --- API 查詢邏輯 (優化版) ---
   const handleExerciseDoubleClick = async (exerciseId) => {
     try {
@@ -125,7 +158,7 @@ const WeeklyPlanPage = () => {
     setDraggedItem(null);
   };
 
-  const handleDrop = (
+  const handleDrop = async (
     e,
     targetDay,
     targetBlockId = null,
@@ -134,34 +167,82 @@ const WeeklyPlanPage = () => {
     e.preventDefault();
     e.stopPropagation();
     if (!draggedItem) return;
+
     const { type, id, sourceBlockId } = draggedItem;
 
+    // snapshot for rollback
+    const prevBlocks = blocks;
+
     if (type === "BLOCK") {
+      // 1) optimistic UI
       setBlocks((prev) =>
         prev.map((b) => (b.id === id ? { ...b, day: targetDay } : b)),
       );
+
+      // 2) persist
+      try {
+        await patchBlockDay(id, targetDay);
+      } catch (err) {
+        console.error(err);
+        alert("更新失敗，已還原");
+        setBlocks(prevBlocks); // rollback
+      }
+      return;
     } else if (type === "EXERCISE") {
+      // Save snapshot for rollback
+      const prevBlocks = blocks;
+
+      // Determine destination block
+      const destBlockId = targetBlockId ?? sourceBlockId;
+
+      // We'll compute insert order and also do optimistic update
+      let insertOrder = 0;
+
       setBlocks((prev) => {
-        const nextData = JSON.parse(JSON.stringify(prev));
-        const sourceBlock = nextData.find((b) => b.id === sourceBlockId);
-        const targetBlock = targetBlockId
-          ? nextData.find((b) => b.id === targetBlockId)
-          : sourceBlock;
-        if (!sourceBlock || !targetBlock) return prev;
+        const next = JSON.parse(JSON.stringify(prev));
+
+        const sourceBlock = next.find((b) => b.id === sourceBlockId);
+        const destBlock = next.find((b) => b.id === destBlockId);
+        if (!sourceBlock || !destBlock) return prev;
+
         const exIndex = sourceBlock.exercises.findIndex((ex) => ex.id === id);
+        if (exIndex === -1) return prev;
+
         const [movedEx] = sourceBlock.exercises.splice(exIndex, 1);
+
+        // compute insert order: before targetExId, else append
         if (targetExId) {
-          const targetIndex = targetBlock.exercises.findIndex(
+          const idx = destBlock.exercises.findIndex(
             (ex) => ex.id === targetExId,
           );
-          targetBlock.exercises.splice(targetIndex, 0, movedEx);
+          insertOrder = idx === -1 ? destBlock.exercises.length : idx;
         } else {
-          targetBlock.exercises.push(movedEx);
+          insertOrder = destBlock.exercises.length;
         }
-        return nextData;
+
+        destBlock.exercises.splice(insertOrder, 0, movedEx);
+        return next;
       });
+
+      // Persist to backend (PATCH)
+      try {
+        await patchMoveExercise(id, destBlockId, insertOrder);
+      } catch (err) {
+        console.error(err);
+        alert("更新失敗，已還原");
+        setBlocks(prevBlocks); // rollback
+      }
     }
   };
+
+  if (blocks === null) {
+    return (
+      <div className="weekly-container">
+        <h1>訓練週計畫</h1>
+        <p>載入中...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="weekly-container">
@@ -174,58 +255,71 @@ const WeeklyPlanPage = () => {
           </div>
         )}
       </div>
-
+      {blocks.length === 0 && (
+        <div className="empty-plan">
+          <p>目前尚未建立訓練計畫。</p>
+          <p>請先產生或設定一個週計畫。</p>
+        </div>
+      )}
       <div className="board-columns">
-        {DAYS.map((day) => (
-          <div
-            key={day}
-            className="day-column"
-            onDragOver={(e) => e.preventDefault()}
-            onDrop={(e) => handleDrop(e, day)}
-          >
-            <div className="column-header">{day}</div>
-            <div className="column-content">
-              {blocks
-                .filter((b) => b.day === day)
-                .map((block) => (
-                  <div
-                    key={block.id}
-                    className="workout-block"
-                    draggable
-                    onDragStart={(e) =>
-                      handleDragStart(e, "BLOCK", { id: block.id })
-                    }
-                    onDragEnd={handleDragEnd}
-                    onDrop={(e) => handleDrop(e, day, block.id)}
-                  >
-                    <div className="workout-block-header">{block.title}</div>
-                    <div className="block-exercises">
-                      {block.exercises.map((ex) => (
-                        <div
-                          key={ex.id}
-                          className="exercise-mini-card"
-                          draggable
-                          onDragStart={(e) =>
-                            handleDragStart(e, "EXERCISE", {
-                              id: ex.id,
-                              sourceBlockId: block.id,
-                            })
-                          }
-                          onDragEnd={handleDragEnd}
-                          onDrop={(e) => handleDrop(e, day, block.id, ex.id)}
-                          onDragOver={(e) => e.preventDefault()}
-                          onDoubleClick={() => handleExerciseDoubleClick(ex.id)}
-                        >
-                          <span className="exercise-name">{ex.title}</span>
-                          <span className="exercise-sets">{ex.sets}</span>
-                        </div>
-                      ))}
+        {DAYS.map((day) => {
+          const dayBlocks = blocks.filter((b) => b.day === day);
+          const activeBlocks = dayBlocks.filter((b) => !b.is_rest_day);
+          return (
+            <div
+              key={day}
+              className="day-column"
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={(e) => handleDrop(e, day)}
+            >
+              <div className="column-header">{day}</div>
+
+              {/* ✅ only render content area if this day has blocks */}
+              {
+                <div className="column-content">
+                  {activeBlocks.map((block) => (
+                    <div
+                      key={block.id}
+                      className="workout-block"
+                      draggable
+                      onDragStart={(e) =>
+                        handleDragStart(e, "BLOCK", { id: block.id })
+                      }
+                      onDragEnd={handleDragEnd}
+                      onDrop={(e) => handleDrop(e, day, block.id)}
+                    >
+                      <div className="workout-block-header">{block.title}</div>
+                      <div className="block-exercises">
+                        {block.exercises.map((ex) => (
+                          <div
+                            key={ex.id}
+                            className="exercise-mini-card"
+                            draggable
+                            onDragStart={(e) =>
+                              handleDragStart(e, "EXERCISE", {
+                                id: ex.id,
+                                sourceBlockId: block.id,
+                              })
+                            }
+                            onDragEnd={handleDragEnd}
+                            onDrop={(e) => handleDrop(e, day, block.id, ex.id)}
+                            onDragOver={(e) => e.preventDefault()}
+                            onDoubleClick={() =>
+                              handleExerciseDoubleClick(ex.exercise_id)
+                            }
+                          >
+                            <span className="exercise-name">{ex.title}</span>
+                            <span className="exercise-sets">{ex.sets}</span>
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
+              }
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {modalData && (
