@@ -14,25 +14,17 @@ class DiagnosisNote(BaseModel):
     weak_parts: Optional[list[str]] = Field(
         None, description="user's weak body part that need to have more training"
     )
-    # progress_report: this will gen from Bio-Feedback agent (not yet build)
-    injuries: Optional[list[str]] = Field(None)
-    load: Optional[int] = Field(None)
-    conclusion: Optional[str] = Field(None)
 
 
-def get_weak_part_node(state: GraphState) -> DiagnosisNote:
+class SearchQuery(BaseModel):
+    search_query: str = Field(None, description="Search query for retrieval.")
+
+
+def announce_doctor_node(state: GraphState):
     feedback = "🩺 Quick safety check — reviewing health constraints…"
     print("⚡ Running Weak Part Diagnosis...")
-    seg = state["profile"].latest_scan.segmental_muscle
-    weak_parts = identify_weak_parts(seg)
-    user_goal = state["profile"].user_goal
-    injuries = state["profile"].injuries
-    load = state["profile"].load
+
     return {
-        "weak_parts": weak_parts,
-        "user_goal": user_goal,
-        "injures": injuries,
-        "load": load,
         "system_feedback": feedback,
     }
 
@@ -40,9 +32,19 @@ def get_weak_part_node(state: GraphState) -> DiagnosisNote:
 # def get_progress_node
 
 
-async def conlude_suggestion_node(state: DiagnosisNote) -> GraphState:
+async def conlude_suggestion_node(state: GraphState):
+    seg = state["profile"].latest_scan.segmental_muscle
+    weak_parts = identify_weak_parts(seg)
+    user_goal = state["profile"].user_goal
+    injuries = state["profile"].injuries
     llm = get_ollama()
-    prompt = DIAGNOSIS_PROMPT.format(Note=state)
+
+    prompt = DIAGNOSIS_PROMPT.format(
+        weak_parts=weak_parts,
+        goal=user_goal,
+        injuries=injuries,
+    )
+
     structured_llm = llm.with_structured_output(DoctorSuggestion)
 
     doctor_suggetsion = await structured_llm.ainvoke(prompt)

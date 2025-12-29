@@ -1,4 +1,6 @@
 from app.graph.agents.consultant.node import (
+    announce_curator,
+    announce_strategy,
     conclusion_node,
     consultant_node,
     load_user_context_node,
@@ -35,7 +37,11 @@ def build_consultant_graph():
     workflow.add_node("strategy_agent", strategy_agent)
     workflow.add_node("curator_agent", curator_agent)
     workflow.add_node("conclusion", conclusion_node)
+    workflow.add_node("announce_curator", announce_curator)
+    workflow.add_node("announce_strategy", announce_strategy)
 
+    workflow.add_edge("announce_curator", "curator_agent")
+    workflow.add_edge("announce_strategy", "strategy_agent")
     workflow.add_edge(START, "load_user_context")
     workflow.add_edge(
         "load_user_context",
@@ -47,7 +53,6 @@ def build_consultant_graph():
         route_delegate,
         {
             "__end__": "conclusion",
-            "update_inbody": "profile_agent",
             "run_tasks": "run_tasks",
         },
     )
@@ -62,18 +67,23 @@ def build_consultant_graph():
     workflow.add_conditional_edges(
         "run_tasks",
         route_after_tasks,
-        {"doctor": "doctor_agent", "sync_db": "sync_db", "__end__": "conclusion"},
+        {
+            "update_inbody": "profile_agent",
+            "doctor": "doctor_agent",
+            "sync_db": "sync_db",
+            "__end__": "conclusion",
+        },
     )
     workflow.add_conditional_edges(
         "doctor_agent",
         route_after_doctor,
         {
-            "strategy": "strategy_agent",
-            "curator": "curator_agent",
+            "strategy": "announce_strategy",
+            "curator": "announce_curator",
             "sync_db": "sync_db",
         },
     )
-    workflow.add_edge("strategy_agent", "curator_agent")
+    workflow.add_edge("strategy_agent", "announce_curator")
     workflow.add_edge("curator_agent", "sync_db")
     workflow.add_edge("sync_db", "conclusion")
     workflow.add_edge("conclusion", END)

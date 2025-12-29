@@ -27,7 +27,7 @@ from .utils import (
 
 
 class DelegateTask(BaseModel):
-    tasks: list[Literal["user", "plan_changing", "inbody"]]
+    tasks: list[Literal["user", "plan_changing"]]
     days: list[str] = []
     instruction: str | None = None
 
@@ -107,16 +107,12 @@ async def consultant_node(state: GraphState):
 
 def route_delegate(
     state: GraphState,
-) -> Literal["__end__", "run_tasks", "update_inbody"]:
+) -> Literal["__end__", "run_tasks"]:
     msg = state["messages"][-1]
     if not getattr(msg, "tool_calls", None):
         return "__end__"
 
-    tasks = msg.tool_calls[0]["args"]["tasks"]
-
     # inbody often implies full recompute, handle separately if you want
-    if "inbody" in tasks:
-        return "update_inbody"
     return "run_tasks"
 
 
@@ -168,6 +164,7 @@ async def run_tasks_node(state: GraphState):
 def route_after_profile(state: GraphState):
     profile = state.get("profile")
     has_scan = bool(profile and getattr(profile, "latest_scan", None))
+
     if has_scan:
         return "doctor"
     return "sync_db"
@@ -179,7 +176,10 @@ def route_after_tasks(state: GraphState):
 
     profile = state.get("profile")
     has_scan = bool(profile and getattr(profile, "latest_scan", None))
+    inbody_input = state.get("inbody_pdf_input")
 
+    if inbody_input is not None:
+        return "update_inbody"
     if has_scan:
         return "doctor"
     return "sync_db"
@@ -291,3 +291,13 @@ async def conclusion_node(state: GraphState):
     response = await llm.ainvoke(message)
 
     return {"conclusion_msg": response}
+
+
+def announce_curator(state: GraphState):
+    feedback = "🏋️ Building your exercise list with sets and reps…"
+    return {"system_feedback": feedback}
+
+
+def announce_strategy(state: GraphState):
+    feedback = "🧠 Designing your weekly training strategy…"
+    return {"system_feedback": feedback}

@@ -29,10 +29,6 @@ class CuratorState(MessagesState):
     safety_constraints: list[str]
 
 
-def announce_curator(state: GraphState):
-    return {"system_feedback": "🏋️ Building your exercise list with sets and reps…"}
-
-
 def distribute_exercise(state: GraphState):
     print("Start Distribute Exercise Generation")
     weekly_plan = state["weekly_plan"].schedule
@@ -117,26 +113,29 @@ async def curator_agent(state: CuratorState):
 
 async def formalizer_node(state: CuratorState) -> GraphState:
     """The final step inside the Subgraph"""
-    extraction_prompt = SystemMessage(
-        content="""
-        Review the history, there is a Daily Plan about exercise.
-        Based on Daily Plan, output the final exercise list in JSON format
-        matching the OUTPUT SCHEMA defined in your instructions.
-        Do not call any more tools. Return ONLY the JSON.
 
-        ### OUTPUT SCHEMA
-        You must provide the following fields for each exercise:
-        - `exercise_id`: (string) The raw ID from the tool.
-        - `name`: (string) Full exercise name.
-        - `sets`: (integer) Total sets.
-        - `reps`: (string) e.g., "8-12".
+    prompt = SystemMessage(
+        content="""
+        Reflect on the following interaction and the <search_exercise_tool> tool calls response.
+        Focusing on the user request, and use tool calls history to structured plan
+        The <search_exercise_tool> tool calls history contain several items in structured of:
+
+        - "name"
+        - "id"
+
+        Extract structured plan according those tool call history and the User request.
+        Use the provided tools to capture plan.
+
+        There may be many tool calls.
+        Extract at least 3 or 4 items accurately.
+        Use parallel tool calling when appropriate.
     """
     )
+
     llm = get_ollama_gpt_120()
 
-    messages = state["messages"][-4:] + [extraction_prompt]
+    messages = state["messages"][-4:] + [prompt]
     response = await llm.ainvoke(messages)
-
     gemma = get_ollama()  # Local
     cleaner_llm = gemma.with_structured_output(WorkoutFills)
 
