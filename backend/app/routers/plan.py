@@ -1,7 +1,6 @@
-import os
+import copy
 from typing import List, Optional
 
-import httpx
 from app.auth.protected import get_current_user
 from app.db.models.plan import WeeklyPlan
 from app.db.models.user import User
@@ -9,6 +8,7 @@ from app.db.session import AsyncSessionLocal
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy import select
+from sqlalchemy.orm.attributes import flag_modified
 
 router = APIRouter()
 
@@ -110,7 +110,7 @@ async def update_block_day(
         if not plan:
             raise HTTPException(404, "Active plan not found")
 
-        current_data = dict(plan.plan_data)
+        current_data = copy.deepcopy(plan.plan_data)
         schedule = current_data.get("schedule", [])
 
         found = False
@@ -124,11 +124,12 @@ async def update_block_day(
             raise HTTPException(404, "Block not found")
 
         plan.plan_data = current_data
+        flag_modified(plan, "plan_data")
         await session.commit()
         return {"status": "success", "block_id": block_id, "new_day": body.day}
 
 
-@router.patch("/exercises/{exercise_id}")
+@router.patch("/exercises/move/{exercise_id}")
 async def move_exercise(
     exercise_id: str, body: ExerciseMove, current_user: User = Depends(get_current_user)
 ):
@@ -143,7 +144,7 @@ async def move_exercise(
         if not plan:
             raise HTTPException(404, "Active plan not found")
 
-        current_data = dict(plan.plan_data)
+        current_data = copy.deepcopy(plan.plan_data)
         schedule = current_data.get("schedule", [])
 
         # 1. Find and remove exercise from source
@@ -179,43 +180,6 @@ async def move_exercise(
         target_block["exercises"].insert(insert_idx, target_ex)
 
         plan.plan_data = current_data
+        flag_modified(plan, "plan_data")
         await session.commit()
         return {"status": "success"}
-
-
-@router.get("/exercises/search")
-async def search_exercises(name: str):
-    """搜尋動作資料庫 (Search Exercises)"""
-    api_key = os.getenv("RAPIDAPI_KEY")
-    if not api_key:
-        raise HTTPException(500, "Server misconfiguration: Missing API Key")
-
-    url = f"https://exercisedb-api1.p.rapidapi.com/api/v1/exercises/name/{name}"
-    headers = {
-        "x-rapidapi-key": api_key,
-        "x-rapidapi-host": "exercisedb-api1.p.rapidapi.com",
-    }
-
-    async with httpx.AsyncClient() as client:
-        try:
-            response = await client.get(url, headers=headers, params={"limit": 10})
-            if response.status_code != 200:
-                return []
-
-            data = response.json()
-            results = []
-            for item in data:
-                results.append(
-                    {
-                        "name": item.get("name", "").title(),
-                        "description": " ".join(
-                            item.get("instructions", [])[:2]
-                        ),  # Take first 2 steps as desc
-                        "image_url": item.get("gifUrl"),
-                        "target_muscle": item.get("target"),
-                    }
-                )
-            return results
-        except Exception as e:
-            print(f"Search error: {e}")
-            return []

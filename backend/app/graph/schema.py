@@ -148,7 +148,6 @@ class ExerciseDetail(BaseModel):
     name: str = Field(..., description="Name of the exercise (e.g., 'Barbell Squat')")
     sets: int = Field(..., description="Number of sets")
     reps: str = Field(..., description="Rep range (e.g., '8-12' or 'AMRAP')")
-    note: Optional[str] = Field(None, description="Tips (e.g., 'Focus on depth')")
 
 
 class DailyWorkout(BaseModel):

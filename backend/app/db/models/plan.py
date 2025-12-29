@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Any
 from app.db.base import Base
 from sqlalchemy import ForeignKey, event, func
 from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.ext.mutable import MutableDict
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 if TYPE_CHECKING:
@@ -19,8 +20,9 @@ class WeeklyPlan(Base):
 
     # stores the output of 'plan_compiler_node'
     # It will contain the 7-day schedule with all exercises
-    plan_data: Mapped[dict] = mapped_column(JSONB, nullable=False)
-
+    plan_data: Mapped[dict] = mapped_column(
+        MutableDict.as_mutable(JSONB), nullable=False
+    )
     # Track which plan is currently active
     is_active: Mapped[bool] = mapped_column(default=True)
 
