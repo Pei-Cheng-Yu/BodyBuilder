@@ -79,6 +79,7 @@ The system is composed of several interconnected agents, each performing a uniqu
 - **Real-Time Syncing**: Syncs user data with the database, ensuring the system is always up to date with the latest information.
 - **User Authentication**: Secure user login and authentication using JWT tokens to ensure personalized experiences.
 
+
 ## Getting Started
 
 ## Prerequisites
@@ -212,3 +213,74 @@ pip freeze > requirements.txt
 ### Pre-commit Hooks
 
 This project uses `pre-commit` to ensure code quality. It will automatically run Linting and Formatting checks before every commit.
+
+## Graph Preview
+
+
+```mermaid
+---
+config:
+  flowchart:
+    curve: linear
+---
+graph TD;
+        __start__([<p>__start__</p>]):::first
+        load_user_context(load_user_context)
+        consultant(consultant)
+        run_tasks(run_tasks)
+        sync_db(sync_db)
+        conclusion(conclusion)
+        announce_curator(announce_curator)
+        announce_strategy(announce_strategy)
+        __end__([<p>__end__</p>]):::last
+        __start__ --> load_user_context;
+        announce_curator --> curator_agent\3acurator_worker\3a__start__;
+        announce_strategy --> strategy_agent\3astrategy_scheduler;
+        consultant -. &nbsp;__end__&nbsp; .-> conclusion;
+        consultant -.-> run_tasks;
+        curator_agent\3aplan_compiler --> sync_db;
+        doctor_agent\3aconclude_suggestion -. &nbsp;curator&nbsp; .-> announce_curator;
+        doctor_agent\3aconclude_suggestion -. &nbsp;strategy&nbsp; .-> announce_strategy;
+        doctor_agent\3aconclude_suggestion -.-> sync_db;
+        load_user_context --> consultant;
+        profile_agent\3ainbody_analysis -. &nbsp;doctor&nbsp; .-> doctor_agent\3aannounce_doctor;
+        profile_agent\3ainbody_analysis -.-> sync_db;
+        run_tasks -. &nbsp;__end__&nbsp; .-> conclusion;
+        run_tasks -. &nbsp;doctor&nbsp; .-> doctor_agent\3aannounce_doctor;
+        run_tasks -. &nbsp;update_inbody&nbsp; .-> profile_agent\3ainbody_analysis;
+        run_tasks -.-> sync_db;
+        strategy_agent\3aplan_reconstruct --> announce_curator;
+        sync_db --> conclusion;
+        conclusion --> __end__;
+        subgraph doctor_agent
+        doctor_agent\3aannounce_doctor(announce_doctor)
+        doctor_agent\3aconclude_suggestion(conclude_suggestion)
+        doctor_agent\3aannounce_doctor --> doctor_agent\3aconclude_suggestion;
+        end
+        subgraph strategy_agent
+        strategy_agent\3astrategy_scheduler(strategy_scheduler)
+        strategy_agent\3aplan_reconstruct(plan_reconstruct)
+        strategy_agent\3astrategy_scheduler --> strategy_agent\3aplan_reconstruct;
+        end
+        subgraph curator_agent
+        curator_agent\3aplan_compiler(plan_compiler)
+        curator_agent\3acurator_worker\3aformalizer --> curator_agent\3aplan_compiler;
+        subgraph curator_worker
+        curator_agent\3acurator_worker\3a__start__(<p>__start__</p>)
+        curator_agent\3acurator_worker\3aagent(agent)
+        curator_agent\3acurator_worker\3atools(tools)
+        curator_agent\3acurator_worker\3aformalizer(formalizer)
+        curator_agent\3acurator_worker\3a__start__ --> curator_agent\3acurator_worker\3aagent;
+        curator_agent\3acurator_worker\3aagent -. &nbsp;__end__&nbsp; .-> curator_agent\3acurator_worker\3aformalizer;
+        curator_agent\3acurator_worker\3aagent -.-> curator_agent\3acurator_worker\3atools;
+        curator_agent\3acurator_worker\3atools --> curator_agent\3acurator_worker\3aagent;
+        end
+        end
+        subgraph profile_agent
+        profile_agent\3ainbody_analysis(inbody_analysis)
+        end
+        classDef default fill:#f2f0ff,line-height:1.2
+        classDef first fill-opacity:0
+        classDef last fill:#bfb6fc
+```
+
