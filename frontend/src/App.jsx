@@ -1,9 +1,28 @@
-import React, { useState } from "react";
+import React from "react";
+import {
+  Routes,
+  Route,
+  Navigate,
+  useNavigate,
+  useLocation,
+} from "react-router-dom";
 import ChatPage from "./ChatPage";
 import WeeklyPlanPage from "./WeeklyPlanPage";
+import LoginPage from "./LoginPage";
+import RegisterPage from "./RegisterPage";
+import ProtectedRoute from "./ProtectedRoute";
+import api from "./api";
+function Layout({ children }) {
+  const navigate = useNavigate();
+  const location = useLocation();
 
-function App() {
-  const [view, setView] = useState("plan");
+  const isPlan = location.pathname.startsWith("/plan");
+  const isChat = location.pathname.startsWith("/chat");
+
+  const handleLogout = async () => {
+    await api.post("/auth/logout"); // backend deletes cookie
+    navigate("/login", { replace: true });
+  };
 
   return (
     <div
@@ -16,7 +35,6 @@ function App() {
         fontFamily: "sans-serif",
       }}
     >
-      {/* 左側側邊欄 */}
       <aside
         style={{
           width: "240px",
@@ -41,21 +59,29 @@ function App() {
 
         <nav style={{ display: "flex", flexDirection: "column", gap: "5px" }}>
           <button
-            onClick={() => setView("plan")}
-            style={sidebarBtnStyle(view === "plan")}
+            onClick={() => navigate("/plan")}
+            style={sidebarBtnStyle(isPlan)}
           >
             📅 每週訓練計畫
           </button>
           <button
-            onClick={() => setView("chat")}
-            style={sidebarBtnStyle(view === "chat")}
+            onClick={() => navigate("/chat")}
+            style={sidebarBtnStyle(isChat)}
           >
             💬 AI 健身助手
           </button>
+
+          <div style={{ marginTop: "auto", padding: "0 20px" }}>
+            <button
+              onClick={handleLogout}
+              style={{ ...sidebarBtnStyle(false), width: "100%" }}
+            >
+              🚪 Logout
+            </button>
+          </div>
         </nav>
       </aside>
 
-      {/* 右側內容區 */}
       <main
         style={{
           flex: 1,
@@ -65,9 +91,47 @@ function App() {
           flexDirection: "column",
         }}
       >
-        {view === "plan" ? <WeeklyPlanPage /> : <ChatPage />}
+        {children}
       </main>
     </div>
+  );
+}
+
+export default function App() {
+  return (
+    <Routes>
+      {/* Public */}
+      <Route path="/login" element={<LoginPage />} />
+      <Route path="/register" element={<RegisterPage />} />
+
+      {/* Protected */}
+      <Route
+        path="/plan"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <WeeklyPlanPage />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/chat"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <ChatPage />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+
+      {/* Default: land on plan, ProtectedRoute will bounce to login if no token */}
+      <Route path="/" element={<Navigate to="/plan" replace />} />
+
+      {/* 404 */}
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
   );
 }
 
@@ -83,5 +147,3 @@ const sidebarBtnStyle = (active) => ({
   borderLeft: active ? "4px solid #3b82f6" : "4px solid transparent",
   transition: "0.2s",
 });
-
-export default App;

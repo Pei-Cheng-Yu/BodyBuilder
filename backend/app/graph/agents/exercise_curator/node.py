@@ -29,6 +29,10 @@ class CuratorState(MessagesState):
     safety_constraints: list[str]
 
 
+def announce_curator(state: GraphState):
+    return {"system_feedback": "🏋️ Building your exercise list with sets and reps…"}
+
+
 def distribute_exercise(state: GraphState):
     print("Start Distribute Exercise Generation")
     weekly_plan = state["weekly_plan"].schedule

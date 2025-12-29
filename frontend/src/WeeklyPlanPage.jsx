@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import "./WeeklyPlanPage.css";
-
+const EXERCISE_CACHE_PREFIX = "exercise:";
+const CACHE_TTL = 1000 * 60 * 60 * 24 * 7;
 const DAYS = [
   "Monday",
   "Tuesday",
@@ -17,17 +18,46 @@ const INITIAL_DATA = [
     day: "Monday",
     title: "胸部與三頭訓練",
     exercises: [
-      { id: "e1", title: "臥推", sets: "4x10" },
-      { id: "e2", title: "啞鈴飛鳥", sets: "3x12" },
+      { id: "exr_41n2hdo2vCtq4F3E", title: "臥推", sets: "4x10" },
+      { id: "exr_41n2hdo2vCtq4F3E", title: "啞鈴飛鳥", sets: "3x12" },
     ],
   },
   {
     id: "block-2",
     day: "Wednesday",
     title: "背部與二頭訓練",
-    exercises: [{ id: "e4", title: "引體向上", sets: "3xMax" }],
+    exercises: [
+      { id: "exr_41n2hdo2vCtq4F3E", title: "引體向上", sets: "3xMax" },
+    ],
   },
 ];
+function getCachedExercise(exerciseId) {
+  const raw = localStorage.getItem(EXERCISE_CACHE_PREFIX + exerciseId);
+  if (!raw) return null;
+
+  try {
+    const parsed = JSON.parse(raw);
+
+    // TTL check
+    if (Date.now() - parsed.cachedAt > CACHE_TTL) {
+      localStorage.removeItem(EXERCISE_CACHE_PREFIX + exerciseId);
+      return null;
+    }
+
+    return parsed.data;
+  } catch {
+    return null;
+  }
+}
+function setCachedExercise(exerciseId, data) {
+  localStorage.setItem(
+    EXERCISE_CACHE_PREFIX + exerciseId,
+    JSON.stringify({
+      cachedAt: Date.now(),
+      data,
+    }),
+  );
+}
 
 const WeeklyPlanPage = () => {
   const [blocks, setBlocks] = useState(INITIAL_DATA);
@@ -38,19 +68,49 @@ const WeeklyPlanPage = () => {
   const [modalData, setModalData] = useState(null);
 
   // --- API 查詢邏輯 (優化版) ---
-  const handleExerciseDoubleClick = async (exName) => {
-    setIsSearching(true);
+  const handleExerciseDoubleClick = async (exerciseId) => {
+    try {
+      setIsSearching(true);
 
-    // 模擬 API 請求延遲 1.5 秒
-    setTimeout(() => {
-      const mockResult = {
-        name: exName,
-        description: `這是關於 ${exName} 的詳細訓練說明。這項動作主要針對目標肌群進行強化，建議保持核心穩定。`,
-        image: "https://via.placeholder.com/300x200?text=Exercise+Demo",
+      // 1. Check cache first
+      const cached = getCachedExercise(exerciseId);
+      if (cached) {
+        setModalData(cached);
+        return;
+      }
+
+      // 2. Fetch from backend
+      const res = await fetch(
+        `http://localhost:8001/api/exercises/${exerciseId}`,
+      );
+
+      if (!res.ok) {
+        throw new Error("Failed to fetch exercise detail");
+      }
+
+      const data = await res.json();
+
+      const modalPayload = {
+        name: data.name,
+        description: data.overview,
+        bodyParts: data.bodyParts,
+        image: data.imageUrl,
+        video: data.videoUrl,
+        instructions: data.instructions,
+        exerciseTips: data.exerciseTips,
       };
-      setModalData(mockResult);
+
+      // 3. Cache it
+      setCachedExercise(exerciseId, modalPayload);
+
+      // 4. Update UI
+      setModalData(modalPayload);
+    } catch (err) {
+      console.error(err);
+      alert("Failed to load exercise detail");
+    } finally {
       setIsSearching(false);
-    }, 1500);
+    }
   };
 
   // --- 拖曳邏輯 (保持不變) ---
@@ -154,9 +214,7 @@ const WeeklyPlanPage = () => {
                           onDragEnd={handleDragEnd}
                           onDrop={(e) => handleDrop(e, day, block.id, ex.id)}
                           onDragOver={(e) => e.preventDefault()}
-                          onDoubleClick={() =>
-                            handleExerciseDoubleClick(ex.title)
-                          }
+                          onDoubleClick={() => handleExerciseDoubleClick(ex.id)}
                         >
                           <span className="exercise-name">{ex.title}</span>
                           <span className="exercise-sets">{ex.sets}</span>
@@ -170,20 +228,70 @@ const WeeklyPlanPage = () => {
         ))}
       </div>
 
-      {/* --- Modal 彈出視窗 --- */}
       {modalData && (
         <div className="modal-overlay" onClick={() => setModalData(null)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <button className="modal-close" onClick={() => setModalData(null)}>
               &times;
             </button>
-            <h2>{modalData.name}</h2>
-            <img
-              src={modalData.image}
-              alt={modalData.name}
-              className="modal-image"
-            />
-            <p>{modalData.description}</p>
+
+            {/* Title */}
+            <h2 className="modal-title">{modalData.name}</h2>
+            {/* Description */}
+            {modalData.description && (
+              <p className="modal-description">{modalData.description}</p>
+            )}
+            {/* Body parts */}
+            {modalData.bodyParts?.length > 0 && (
+              <div className="modal-tags">
+                {modalData.bodyParts.map((part) => (
+                  <span key={part} className="tag">
+                    {part}
+                  </span>
+                ))}
+              </div>
+            )}
+
+            {/* Image */}
+            {modalData.image && (
+              <img
+                src={modalData.image}
+                alt={modalData.name}
+                className="modal-image"
+                loading="lazy"
+              />
+            )}
+
+            {/* Instructions */}
+            {modalData.instructions?.length > 0 && (
+              <div className="modal-section">
+                <h3>Instructions</h3>
+                <ol>
+                  {modalData.instructions.map((step, idx) => (
+                    <li key={idx}>{step}</li>
+                  ))}
+                </ol>
+              </div>
+            )}
+
+            {/* Tips */}
+            {modalData.exerciseTips?.length > 0 && (
+              <div className="modal-section">
+                <h3>Tips</h3>
+                <ul>
+                  {modalData.exerciseTips.map((tip, idx) => (
+                    <li key={idx}>{tip}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {/* Video */}
+            {modalData.video && (
+              <video controls preload="metadata" className="modal-video">
+                <source src={modalData.video} type="video/mp4" />
+                Your browser does not support the video tag.
+              </video>
+            )}
             <button className="modal-btn" onClick={() => setModalData(null)}>
               關閉
             </button>

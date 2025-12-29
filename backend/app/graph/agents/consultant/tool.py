@@ -88,7 +88,10 @@ async def update_profile(state: GraphState):
 
     llm = get_ollama_gpt_120()
     user_request = last_human_text(state)
-
+    if not user_request:
+        return {
+            "system_feedback": "⚠️ I didn’t catch what you want to change. Try again please!"
+        }
     is_new_profile = old_profile is None
 
     messages = [
@@ -100,16 +103,27 @@ async def update_profile(state: GraphState):
         llm, tools=[ProfileChangeRequest], tool_choice="ProfileChangeRequest"
     )
 
-    result = await extractor.ainvoke({"messages": messages})
-
+    try:
+        result = await extractor.ainvoke({"messages": messages})
+    except Exception:
+        return {
+            "system_feedback": "⚠️ I had trouble updating your profile just now. Please try rephrasing your request (goal, frequency, injuries)."
+        }
     # Extract & apply patch (same as yours)
     patch = next(
         (r for r in result.get("responses", []) if isinstance(r, ProfileChangeRequest)),
         None,
     )
-
+    if not patch:
+        return {
+            "system_feedback": "🤔 I couldn’t find a clear profile change in your message. Try request something more detail."
+        }
     update_data = patch.model_dump(exclude_none=True)
 
+    if not update_data:
+        return {
+            "system_feedback": "✅ Got it — but there’s nothing new to update in your profile from that message."
+        }
     if is_new_profile:
         update_data = patch.model_dump(exclude_none=True)
         new_profile = UserProfile(**update_data)  # create from partial fields
@@ -128,11 +142,15 @@ async def update_profile(state: GraphState):
 
 async def update_plan(state: GraphState):
     weekly_plan = state["weekly_plan"]  # safe because guard handled missing plan
-
+    if not weekly_plan:
+        return {
+            "system_feedback": "⚠️ I don’t have a plan yet. Need a Inbody scan for plan auto generating."
+        }
     user_request = last_human_text(state)
     if not user_request:
-        # safest is no-op (or set system_feedback if your state has it)
-        return {}
+        return {
+            "system_feedback": "⚠️ Tell me what to change in your plan (e.g., “No shoulder for today” or “Make Monday a rest day”)."
+        }
 
     llm = get_ollama_gpt_120()
     extractor = create_extractor(
@@ -140,17 +158,28 @@ async def update_plan(state: GraphState):
         tools=[PlanChangeRequest],
         tool_choice="PlanChangeRequest",
     )
-    result = await extractor.ainvoke(
-        {"messages": [SystemMessage(TRUSTCALL_INSTRUCTION), HumanMessage(user_request)]}
-    )
+    try:
+        result = await extractor.ainvoke(
+            {
+                "messages": [
+                    SystemMessage(TRUSTCALL_INSTRUCTION),
+                    HumanMessage(user_request),
+                ]
+            }
+        )
+    except Exception:
+        return {
+            "system_feedback": "⚠️ I had trouble applying that plan change. Try saying the day + change clearly (e.g., “Tuesday: remove deadlifts”)."
+        }
 
     req = next(
         (r for r in result.get("responses", []) if isinstance(r, PlanChangeRequest)),
         None,
     )
     if not req or not req.days:
-        # no-op so the graph doesn't crash
-        return {}
+        return {
+            "system_feedback": "🤔 I couldn’t detect a specific day change. Example: “Monday: reduce to 1 exercise” or “Want rest on Tuesday”"
+        }
 
     changes = {resolve_day_alias(c.day).lower(): c for c in req.days}
 

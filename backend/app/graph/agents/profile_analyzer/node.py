@@ -30,12 +30,14 @@ def inbody_analysis_node(state: GraphState):
                 "profile": updated_profile,
                 "inbody_pdf_input": None,
                 "is_dirty": True,
+                "system_feedback": "📊 Successfully upate your body composition and stats",
             }
 
         return {
             "latest_scan_data": extracted_data,
             "inbody_pdf_input": None,
             "is_dirty": True,
+            "system_feedback": "📊 Successfully create your body composition and stats",
         }
 
     except Exception as e:

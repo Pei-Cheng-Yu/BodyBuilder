@@ -3,6 +3,7 @@ import uuid
 from typing import Annotated, List, Optional, Union
 
 from app.graph.schema import DailyWorkout, DoctorSuggestion, UserProfile, WeeklyPlan
+from langchain_core.messages import AIMessage
 from langgraph.graph import MessagesState
 
 
@@ -18,3 +19,8 @@ class GraphState(MessagesState):
     needs_strategy: bool = False
     regen_days: Optional[list[str]] = None
     onboarding_required: bool = False
+
+    system_feedback: Optional[str]
+    actions: Annotated[list[str], operator.add]
+    consultant_msg: Optional[AIMessage]
+    conclusion_msg: Optional[AIMessage]

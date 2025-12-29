@@ -6,18 +6,24 @@ from app.db.models import UserProfile as SQLProfile
 from app.db.models import WeeklyPlan as SQLWeeklyPlan
 from app.db.session import AsyncSessionLocal
 from app.graph.llm.gemini import get_gemini
+from app.graph.llm.ollama import get_ollama_gpt_120
 from app.graph.schema import DoctorSuggestion, UserProfile, WeeklyPlan
 from app.graph.state import GraphState
 from langchain_core.messages import SystemMessage
 from pydantic import BaseModel
-from rich import print as rprint
 from sqlalchemy import select, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import selectinload
 
-from .prompt import MODEL_SYSTEM_MESSAGE
+from .prompt import CONCLUSION_INSTRUCTION, MODEL_SYSTEM_MESSAGE
 from .tool import update_plan, update_profile
-from .utils import make_tool_ack, make_tool_error, should_regen_exercises
+from .utils import (
+    extract_ai_text,
+    last_human_text,
+    make_tool_ack,
+    make_tool_error,
+    should_regen_exercises,
+)
 
 
 class DelegateTask(BaseModel):
@@ -30,6 +36,7 @@ class DelegateTask(BaseModel):
 
 
 async def load_user_context_node(state: GraphState):
+    feedback = "👤 Gather and analyzing your profile and preferences…"
     user_id = state["user_id"]
 
     async with AsyncSessionLocal() as session:
@@ -50,7 +57,10 @@ async def load_user_context_node(state: GraphState):
         return {"onboarding_required": True}
 
     # This "dumps" the DB data into your schema and calculates FFMI/TDEE
-    profile_data = UserProfile.model_validate(user.profile)
+    profile_data = None
+    if user.profile is not None:
+        profile_data = UserProfile.model_validate(user.profile)
+
     prescription = user.prescription  # may be None
     doctor_suggestion = None
 
@@ -64,19 +74,17 @@ async def load_user_context_node(state: GraphState):
         active_plan = WeeklyPlan.model_validate(sql_plan.plan_data)
     # Do the same for Medical and WeeklyPlan if you have schemas for them
 
+    latest_scan = None
+    if profile_data is not None:
+        latest_scan = profile_data.latest_scan
+
     return {
         "profile": profile_data,
         "doctor_suggestion": doctor_suggestion,
         "weekly_plan": active_plan,
-        "onboarding_required": profile_data.latest_scan is None,
+        "onboarding_required": latest_scan is None,
+        "system_feedback": feedback,
     }
-
-
-def route_trigger_generate(state: GraphState):
-    if state.get("weekly_plan") is None and not state.get("onboarding_required"):
-        return "auto_planning"
-    else:
-        return "consultant_node"
 
 
 async def consultant_node(state: GraphState):
@@ -93,7 +101,8 @@ async def consultant_node(state: GraphState):
     llm = get_gemini().bind_tools([DelegateTask])
     user_msg = state["messages"][-1]
     resp = await llm.ainvoke([SystemMessage(system_msg), user_msg])
-    return {"messages": [resp]}
+
+    return {"messages": [resp], "consultant_msg": resp}
 
 
 def route_delegate(
@@ -119,7 +128,7 @@ async def run_tasks_node(state: GraphState):
     if isinstance(tasks, str):
         tasks = [tasks]
 
-    # ✅ Guard: plan_changing requires weekly_plan
+    # Guard: plan_changing requires weekly_plan
     if "plan_changing" in tasks and not state.get("weekly_plan"):
         err = make_tool_error(
             tool_call_id=tool_call["id"],
@@ -131,20 +140,26 @@ async def run_tasks_node(state: GraphState):
 
     ack = make_tool_ack(tool_call_id=tool_call["id"], tasks=tasks)
 
-    # 2️⃣ Working copy of state
+    # Working copy of state
     current = state
-    out = {"messages": [ack]}
+    feedback = "🛠 Applying your requested changes…"
+    out = {"messages": [ack], "system_feedback": feedback, "actions": []}
 
-    # 3️⃣ Profile update first
+    # Profile update first
     if "user" in tasks:
         patch_out = await update_profile(current)
         out.update(patch_out)
+        out.setdefault("actions", []).append("updated_profile")
         current = {**current, **patch_out}  # 🔑 THIS IS THE KEY
 
-    # 4️⃣ Plan update uses updated profile
+    # Plan update uses updated profile
     if "plan_changing" in tasks:
         plan_out = await update_plan(current)
         out.update(plan_out)
+        out.setdefault("actions", []).append("updated_plan")
+        if out.get("regen_days"):
+            days = out["regen_days"]
+            out["actions"].append(f"regen_exercises for: {days}")
         current = {**current, **plan_out}
 
     return out
@@ -190,27 +205,14 @@ async def sync_db_node(state: GraphState):
     The Single Source of Truth Persistor.
     Takes Pydantic snapshots from state and 'dumps' them into Postgres.
     """
+    feedback = "✅ All set! Everything is Saved to your profile"
     if not state.get("is_dirty"):
-        return {"is_dirty": False}
-    rprint("[sync_db] keys:", list(state.keys()))
-    rprint("[sync_db] has profile:", bool(state.get("profile")))
-    rprint("[sync_db] has doctor_suggestion:", bool(state.get("doctor_suggestion")))
-    rprint("[sync_db] profile type:", type(state.get("profile")))
-    rprint("[sync_db] doctor_suggestion type:", type(state.get("doctor_suggestion")))
+        return {"is_dirty": False, "system_feedback": "✅ Nothing to save."}
+
     user_id = state["user_id"]
 
     async with AsyncSessionLocal() as session:
-        stmt = (
-            insert(User)
-            .values(
-                id=user_id,
-                email=f"guest+{user_id}@local",  # guaranteed unique
-                hashed_password="__GUEST__",  # clearly non-loginable
-            )
-            .on_conflict_do_nothing(index_elements=["id"])
-        )
 
-        await session.execute(stmt)
         # 1. Sync User Profile
         if state.get("profile"):
             # Convert Pydantic -> Dict (mode='json' handles JSONB columns)
@@ -263,4 +265,29 @@ async def sync_db_node(state: GraphState):
         await session.commit()
 
     # Reset the flag so we don't save twice
-    return {"is_dirty": False}
+    return {"is_dirty": False, "system_feedback": feedback, "actions": ["saved_to_db"]}
+
+
+async def conclusion_node(state: GraphState):
+    actions = state.get("actions") or []
+    feedback = state.get("system_feedback")
+    profile = state.get("profile")
+    weekly_plan = state.get("weekly_plan")
+    doctor = state.get("doctor_suggestion")
+    request = last_human_text(state)
+    ai_msg = state.get("consultant_msg")
+    text = extract_ai_text(ai_msg)
+    message = CONCLUSION_INSTRUCTION.format(
+        ai_msg=text,
+        feedback=feedback,
+        user_request=request,
+        profile=profile,
+        weekly_plan=weekly_plan,
+        actions=actions,
+        doctor_suggestion=doctor,
+    )
+
+    llm = get_ollama_gpt_120()
+    response = await llm.ainvoke(message)
+
+    return {"conclusion_msg": response}

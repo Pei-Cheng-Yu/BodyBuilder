@@ -4,6 +4,7 @@ from langgraph.prebuilt import ToolNode, tools_condition
 
 from .node import (
     CuratorState,
+    announce_curator,
     curator_agent,
     distribute_exercise,
     formalizer_node,
@@ -36,11 +37,13 @@ def build_curator_graph():
     curator_worker = build_curator_agent()
 
     workflow = StateGraph(GraphState)
+    workflow.add_node("announce_curator", announce_curator)
     workflow.add_node("curator_worker", curator_worker)
     workflow.add_node("plan_compiler", plan_compiler_node)
 
+    workflow.add_edge(START, "announce_curator")
     workflow.add_conditional_edges(
-        START, distribute_exercise, {"curator_worker": "curator_worker"}
+        "announce_curator", distribute_exercise, {"curator_worker": "curator_worker"}
     )
 
     workflow.add_edge("curator_worker", "plan_compiler")
