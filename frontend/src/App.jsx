@@ -11,6 +11,7 @@ import WeeklyPlanPage from "./WeeklyPlanPage";
 import LoginPage from "./LoginPage";
 import RegisterPage from "./RegisterPage";
 import ProtectedRoute from "./ProtectedRoute";
+import UserProfilePage from "./UserProfilePage";
 import api from "./api";
 function Layout({ children }) {
   const navigate = useNavigate();
@@ -58,6 +59,12 @@ function Layout({ children }) {
         </div>
 
         <nav style={{ display: "flex", flexDirection: "column", gap: "5px" }}>
+          <button
+            onClick={() => navigate("/profile")}
+            style={sidebarBtnStyle(location.pathname.startsWith("/profile"))}
+          >
+            👤 User Profile
+          </button>
           <button
             onClick={() => navigate("/plan")}
             style={sidebarBtnStyle(isPlan)}
@@ -125,7 +132,16 @@ export default function App() {
           </ProtectedRoute>
         }
       />
-
+      <Route
+        path="/profile"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <UserProfilePage />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
       {/* Default: land on plan, ProtectedRoute will bounce to login if no token */}
       <Route path="/" element={<Navigate to="/plan" replace />} />
 
