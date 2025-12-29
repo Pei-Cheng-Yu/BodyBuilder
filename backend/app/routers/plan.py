@@ -1,72 +1,221 @@
+import os
+from typing import List, Optional
+
+import httpx
+from app.auth.protected import get_current_user
 from app.db.models.plan import WeeklyPlan
+from app.db.models.user import User
 from app.db.session import AsyncSessionLocal
-from fastapi import APIRouter, HTTPException, status
-from pydantic import BaseModel
-from sqlalchemy import select, text
+from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel, Field
+from sqlalchemy import select
 
 router = APIRouter()
 
 
-class PlanDateUpdate(BaseModel):
+# --- Request/Response Schemas ---
+
+
+class BlockUpdate(BaseModel):
     day: str
 
 
-@router.patch("/{daily_plan_id}")
-async def update_daily_plan_date(daily_plan_id: str, body: PlanDateUpdate):
+class ExerciseMove(BaseModel):
+    block_id: str = Field(..., alias="blockId")  # Target Block ID
+    order: int  # Target Index
+
+
+class ExerciseSearchResponse(BaseModel):
+    name: str
+    description: str
+    image_url: Optional[str] = None
+    target_muscle: str
+
+
+# --- Helpers ---
+
+
+def format_sets(sets: int, reps: str) -> str:
+    """Formats sets and reps into a string like '4x12'."""
+    return f"{sets}x{reps}"
+
+
+def transform_plan_to_frontend(plan_data: dict) -> List[dict]:
     """
-    Updates the 'day' of a specific DailyWorkout block within a WeeklyPlan.
+    Adapts the Backend WeeklyPlan structure to the Frontend Data Model.
     """
+    schedule = plan_data.get("schedule", [])
+    result = []
+    for day in schedule:
+        # Map Backend 'DailyWorkout' -> Frontend 'Block'
+        exercises_formatted = []
+        for ex in day.get("exercises", []):
+            exercises_formatted.append(
+                {
+                    "id": ex.get("id"),  # Unique Instance ID (for Drag & Drop)
+                    "title": ex.get("name"),
+                    "sets": format_sets(ex.get("sets", 0), ex.get("reps", "")),
+                    "exercise_id": ex.get("exercise_id"),  # DB Reference ID
+                }
+            )
+
+        result.append(
+            {
+                "id": day.get("id"),
+                "day": day.get("day"),
+                "title": day.get("focus_area", "Rest"),  # Map focus_area to title
+                "exercises": exercises_formatted,
+                "is_rest_day": day.get("is_rest_day", False),
+            }
+        )
+    return result
+
+
+# --- Endpoints ---
+
+
+@router.get("/plans")
+async def get_active_plan(current_user: User = Depends(get_current_user)):
+    """獲取全週計畫 (Get Full Weekly Plan)"""
     async with AsyncSessionLocal() as session:
-        # 1. Find the WeeklyPlan that contains the daily_plan_id in its schedule
-        # We use a JSONB query to find the row where the schedule array contains an object with this id
-        # Note: This assumes plan_data['schedule'] is a list of objects with an 'id' field.
-
-        # Construct a JSON fragment to search for
-        search_json = f'[{{"id": "{daily_plan_id}"}}]'
-
         stmt = (
             select(WeeklyPlan)
-            .where(text("plan_data->'schedule' @> :search_json"))
-            .params(search_json=search_json)
+            .where(
+                WeeklyPlan.user_id == current_user.id, WeeklyPlan.is_active.is_(True)
+            )
+            .order_by(WeeklyPlan.created_at.desc())
         )
 
         result = await session.execute(stmt)
-        plan = result.scalar_one_or_none()
+        plan = result.scalars().first()
 
         if not plan:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Daily plan with ID {daily_plan_id} not found.",
-            )
+            return []
 
-        # 2. Update the specific block in Python
-        # Since updating a specific array element in JSONB via SQL is complex,
-        # we modify the dict and save it back.
+        return transform_plan_to_frontend(plan.plan_data)
+
+
+@router.patch("/blocks/{block_id}")
+async def update_block_day(
+    block_id: str, body: BlockUpdate, current_user: User = Depends(get_current_user)
+):
+    """更新模組位置 (Update Block Day)"""
+    async with AsyncSessionLocal() as session:
+        stmt = select(WeeklyPlan).where(
+            WeeklyPlan.user_id == current_user.id, WeeklyPlan.is_active.is_(True)
+        )
+        result = await session.execute(stmt)
+        plan = result.scalars().first()
+
+        if not plan:
+            raise HTTPException(404, "Active plan not found")
+
         current_data = dict(plan.plan_data)
         schedule = current_data.get("schedule", [])
 
-        updated = False
-        for day_block in schedule:
-            if day_block.get("id") == daily_plan_id:
-                day_block["day"] = body.day
-                updated = True
+        found = False
+        for day in schedule:
+            if day.get("id") == block_id:
+                day["day"] = body.day
+                found = True
                 break
 
-        if not updated:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="ID found in query but not in loop (unexpected concurrency issue).",
-            )
+        if not found:
+            raise HTTPException(404, "Block not found")
 
-        # 3. Save changes
-        # We must re-assign to trigger SQLAlchemy's change tracking for JSON types
         plan.plan_data = current_data
-        # Mark the field as modified explicitly if needed, but re-assignment usually works
-
         await session.commit()
+        return {"status": "success", "block_id": block_id, "new_day": body.day}
 
-        return {
-            "status": "success",
-            "updated_to": body.day,
-            "daily_plan_id": daily_plan_id,
-        }
+
+@router.patch("/exercises/{exercise_id}")
+async def move_exercise(
+    exercise_id: str, body: ExerciseMove, current_user: User = Depends(get_current_user)
+):
+    """更新動作排序 (Move Exercise between blocks or reorder)"""
+    async with AsyncSessionLocal() as session:
+        stmt = select(WeeklyPlan).where(
+            WeeklyPlan.user_id == current_user.id, WeeklyPlan.is_active.is_(True)
+        )
+        result = await session.execute(stmt)
+        plan = result.scalars().first()
+
+        if not plan:
+            raise HTTPException(404, "Active plan not found")
+
+        current_data = dict(plan.plan_data)
+        schedule = current_data.get("schedule", [])
+
+        # 1. Find and remove exercise from source
+        target_ex = None
+        for day in schedule:
+            exercises = day.get("exercises", [])
+            for i, ex in enumerate(exercises):
+                if ex.get("id") == exercise_id:
+                    target_ex = exercises.pop(i)
+                    break
+            if target_ex:
+                break
+
+        if not target_ex:
+            raise HTTPException(404, "Exercise not found")
+
+        # 2. Find target block and insert
+        target_block = None
+        for day in schedule:
+            if day.get("id") == body.block_id:
+                target_block = day
+                break
+
+        if not target_block:
+            raise HTTPException(404, "Target block not found")
+
+        # Ensure exercises list exists
+        if "exercises" not in target_block:
+            target_block["exercises"] = []
+
+        # Insert at order (clamped to bounds)
+        insert_idx = max(0, min(body.order, len(target_block["exercises"])))
+        target_block["exercises"].insert(insert_idx, target_ex)
+
+        plan.plan_data = current_data
+        await session.commit()
+        return {"status": "success"}
+
+
+@router.get("/exercises/search")
+async def search_exercises(name: str):
+    """搜尋動作資料庫 (Search Exercises)"""
+    api_key = os.getenv("RAPIDAPI_KEY")
+    if not api_key:
+        raise HTTPException(500, "Server misconfiguration: Missing API Key")
+
+    url = f"https://exercisedb-api1.p.rapidapi.com/api/v1/exercises/name/{name}"
+    headers = {
+        "x-rapidapi-key": api_key,
+        "x-rapidapi-host": "exercisedb-api1.p.rapidapi.com",
+    }
+
+    async with httpx.AsyncClient() as client:
+        try:
+            response = await client.get(url, headers=headers, params={"limit": 10})
+            if response.status_code != 200:
+                return []
+
+            data = response.json()
+            results = []
+            for item in data:
+                results.append(
+                    {
+                        "name": item.get("name", "").title(),
+                        "description": " ".join(
+                            item.get("instructions", [])[:2]
+                        ),  # Take first 2 steps as desc
+                        "image_url": item.get("gifUrl"),
+                        "target_muscle": item.get("target"),
+                    }
+                )
+            return results
+        except Exception as e:
+            print(f"Search error: {e}")
+            return []
