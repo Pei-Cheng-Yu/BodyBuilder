@@ -1,6 +1,6 @@
 import uvicorn
 from app.auth import routes as auth
-from app.routers import chat
+from app.routers import exercise_detail, stream
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -10,15 +10,17 @@ app = FastAPI(title="BodyBuilder AI Backend")
 # Allow requests from the frontend (React/Vite)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Allow all origins for development
+    allow_origins=["http://localhost:5173"],  # Allow all origins for development
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 # --- Register Routers ---
-app.include_router(chat.router, prefix="/api")
+
 app.include_router(auth.router, prefix="/api/auth")
+app.include_router(exercise_detail.router, prefix="/api")
+app.include_router(stream.router, prefix="/api")
 
 
 @app.get("/")

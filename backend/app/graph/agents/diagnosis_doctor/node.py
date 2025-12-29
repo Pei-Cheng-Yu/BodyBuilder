@@ -21,6 +21,7 @@ class DiagnosisNote(BaseModel):
 
 
 def get_weak_part_node(state: GraphState) -> DiagnosisNote:
+    feedback = "🩺 Quick safety check — reviewing health constraints…"
     print("⚡ Running Weak Part Diagnosis...")
     seg = state["profile"].latest_scan.segmental_muscle
     weak_parts = identify_weak_parts(seg)
@@ -32,6 +33,7 @@ def get_weak_part_node(state: GraphState) -> DiagnosisNote:
         "user_goal": user_goal,
         "injures": injuries,
         "load": load,
+        "system_feedback": feedback,
     }
 
 

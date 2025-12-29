@@ -1,11 +1,11 @@
 from app.graph.agents.consultant.node import (
+    conclusion_node,
     consultant_node,
     load_user_context_node,
     route_after_doctor,
     route_after_profile,
     route_after_tasks,
     route_delegate,
-    route_trigger_generate,
     run_tasks_node,
     sync_db_node,
 )
@@ -18,27 +18,12 @@ from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import END, START, StateGraph
 
 
-def build_auto_planning_graph():
-    workflow = StateGraph(GraphState)
-
-    curator_agent = build_curator_graph()
-    strategy_agent = build_strategy_graph()
-
-    workflow.add_node("strategy_agent", strategy_agent)
-    workflow.add_node("curator_agent", curator_agent)
-
-    workflow.add_edge(START, "strategy_agent")
-    workflow.add_edge("strategy_agent", "curator_agent")
-    workflow.add_edge("curator_agent", END)
-    return workflow.compile()
-
-
 def build_consultant_graph():
     doctor_agent = build_doctor_graph()
     curator_agent = build_curator_graph()
     strategy_agent = build_strategy_graph()
     profile_agent = build_profile_graph()
-    auto_planning = build_auto_planning_graph()
+
     workflow = StateGraph(GraphState)
     workflow.add_node("load_user_context", load_user_context_node)
     workflow.add_node("consultant", consultant_node)
@@ -49,19 +34,22 @@ def build_consultant_graph():
     workflow.add_node("doctor_agent", doctor_agent)
     workflow.add_node("strategy_agent", strategy_agent)
     workflow.add_node("curator_agent", curator_agent)
-    workflow.add_node("auto_planning", auto_planning)
+    workflow.add_node("conclusion", conclusion_node)
 
     workflow.add_edge(START, "load_user_context")
-    workflow.add_conditional_edges(
+    workflow.add_edge(
         "load_user_context",
-        route_trigger_generate,
-        {"auto_planning": "auto_planning", "consultant_node": "consultant"},
+        "consultant",
     )
-    workflow.add_edge("auto_planning", "sync_db")
+
     workflow.add_conditional_edges(
         "consultant",
         route_delegate,
-        {"__end__": END, "update_inbody": "profile_agent", "run_tasks": "run_tasks"},
+        {
+            "__end__": "conclusion",
+            "update_inbody": "profile_agent",
+            "run_tasks": "run_tasks",
+        },
     )
     workflow.add_conditional_edges(
         "profile_agent",
@@ -74,7 +62,7 @@ def build_consultant_graph():
     workflow.add_conditional_edges(
         "run_tasks",
         route_after_tasks,
-        {"doctor": "doctor_agent", "sync_db": "sync_db", "__end__": END},
+        {"doctor": "doctor_agent", "sync_db": "sync_db", "__end__": "conclusion"},
     )
     workflow.add_conditional_edges(
         "doctor_agent",
@@ -87,6 +75,7 @@ def build_consultant_graph():
     )
     workflow.add_edge("strategy_agent", "curator_agent")
     workflow.add_edge("curator_agent", "sync_db")
-    workflow.add_edge("sync_db", END)
+    workflow.add_edge("sync_db", "conclusion")
+    workflow.add_edge("conclusion", END)
     checkpointer = MemorySaver()
     return workflow.compile(checkpointer=checkpointer)
