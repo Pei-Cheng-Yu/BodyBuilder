@@ -1,75 +1,214 @@
-﻿# BodyBuilder
+# BodyBuilder
 
-AI-powered application designed to digitize and analyze physical fitness scan reports (InBody) using LangGraph and Google Gemini.
+> AI-Driven Personalized  Fitness Consultant
 
-## Environment
+## Project Overview
 
-- Python 3.11
-- pyenv
-- python venv module
+This project is an **AI-driven health and fitness consultant system** designed to provide personalized fitness plans and medical recommendations. The system integrates multiple agents, each responsible for specific aspects of the user's fitness journey, including user profiling, medical prescription integration, fitness plan generation, and workout curation. By leveraging advanced AI models and state management, it delivers customized solutions tailored to individual health and fitness goals.
 
-## How to run
+The project includes a **FastAPI backend** and a **React frontend**, which work together to provide a seamless user experience.
 
-> **Note**
-> The commands might not apply to Windows users directly (path separators).
+## System Architecture
 
-### Install pyenv or pyenv-win (windows)
+The system is composed of several interconnected agents, each performing a unique role in the process:
 
-Install python 3.11 with pyenv, then cd into this project.
+### 1. **Consultant Agent**
+
+- **Role**: Acts as the central orchestrator, analyzing user context and routing tasks to relevant agents. It interacts with the user to gather goals, preferences, and health data.
+
+- **Key Functions**: Load user profile, call other agents (e.g., doctor suggestions, strategy planning), and provide system feedback.
+
+### 2. **Profile Analyzer**
+
+- **Role**: Analyzes the user's body composition (using InBody metrics), health data, and fitness goals. It plays a critical role in personalizing recommendations.
+
+- **Key Functions**: Extract and analyze body composition data, update user profiles with the latest scan.
+
+### 3. **Doctor Agent**
+
+- **Role**: Provides medical suggestions based on user health data, injuries, and fitness goals. This agent ensures that the workout plans are safe and suitable for the user.
+
+- **Key Functions**: Generate medical suggestions, analyze weak body parts, and recommend safety constraints.
+
+### 4. **Strategy Agent**
+
+- **Role**: Plans the user’s weekly fitness schedule, taking into account workout frequency, focus areas, safety constraints, and medical recommendations.
+
+- **Key Functions**: Design personalized weekly fitness strategies with rest days, exercises, and focus areas.
+
+### 5. **Curator Agent**
+
+- **Role**: Curates a list of exercises for each day based on the user’s plan and available equipment. It customizes the workout list, adding sets, reps, and ensuring adherence to safety guidelines.
+
+- **Key Functions**: Generate and curate exercises for each day, respecting user constraints and preferences.
+
+### 6. **Plan Compiler**
+
+- **Role**: Compiles the final weekly workout plan by integrating the exercises curated by the Curator Agent and assembling them into the full schedule.
+
+- **Key Functions**: Re-assemble and finalize the workout plan, ensuring all data is aligned with the user’s fitness goals.
+
+### 7. **Database Syncing**
+
+- **Role**: Syncs all updates (e.g., user profile, medical prescriptions, weekly plan) to the database, ensuring that all information is stored for future use.
+
+- **Key Functions**: Persist changes to the user profile, medical prescriptions, and workout plans into the database.
+
+## Technologies Used
+
+### Backend
+
+- **FastAPI**: The core backend framework, responsible for managing API requests, handling user authentication, and serving data to the frontend.
+- **SQLAlchemy & PostgreSQL**: Used for database management, storing user profiles, workout plans, and medical prescriptions.
+- **Ollama, Gemini**: AI models for generating personalized suggestions and workout strategies.
+- **Pydantic**: For data validation and defining structured schemas.
+- **LangChain & LangGraph**: Frameworks for agent communication and workflow management.
+
+### Frontend
+
+- **React**: The frontend framework used for building the interactive user interface.
+
+- **Axios**: For making API requests to the FastAPI backend.
+
+## Features
+
+- **Personalized Health Insights**: Analyzes body metrics and provides detailed health analysis.
+- **Medical Recommendations**: Generates doctor-approved workout suggestions based on health conditions and injuries.
+- **Weekly Strategy**: Plans a weekly fitness schedule, balancing workout days with rest days and focusing on targeted muscle groups.
+- **Exercise Curation**: Generates a curated list of exercises for each workout session, tailored to the user’s equipment and fitness level.
+- **Real-Time Syncing**: Syncs user data with the database, ensuring the system is always up to date with the latest information.
+- **User Authentication**: Secure user login and authentication using JWT tokens to ensure personalized experiences.
+
+## Getting Started
+
+## Prerequisites
+
+- Python 3.11 (Managed by pyenv)
+- Node.js & npm
+- Docker & Docker Compose
+- python venv module (Virtual Environment)
+
+## How to Run
+
+> [!IMPORTANT]
+> The commands below are optimized for MacOS/Linux. Windows users should use backslashes (`\`) for paths and `pyenv-win` for version management.
+
+### 1. Database Setup
+
+Ensure you have the correct Python version and start the PostgreSQL instance using Docker.
 
 ```bash
+# Set local python version
 pyenv install 3.11
 pyenv local 3.11
+
+# Start the PostgreSQL database
+docker compose up -d db
 ```
 
-### Create virtual environment and source it
+### 2. Backend Setup
 
-**MacOS/Linux**
+Navigate to the project root and initialize your Python environment.
+
+#### Create Virtual Environment
+
+**MacOS/Linux:**
 
 ```bash
-python -m venv venv # create venv in venv directory
-source ./venv/bin/activate # change this path according to your shell type
+python -m venv venv
+source ./venv/bin/activate
 ```
 
-**Windows**
+**Windows:**
 
 ```bash
-python -m venv venv # create venv in venv directory
-.\venv\Scripts\activate # change this path according to your shell type
+python -m venv venv
+.\venv\Scripts\activate
 ```
 
-### Install dependencies
+#### Install Dependencies
 
 ```bash
 pip install -r requirements.txt
-pip install pre-commit # Install pre-commit manually if not in requirements
-pre-commit install --install-hooks # install pre-commit hooks for auto format after every commit
+pip install pre-commit
+pre-commit install --install-hooks
 ```
 
-### Create .env from example.env
+#### Configure Environment Variables
+
+Create a `.env` file in the root directory:
 
 ```bash
 cp example.env .env
-# Then modify the content in .env with your GOOGLE_API_KEY
 ```
 
-### Run the project
+Update your `.env` with the following Database and API Key details:
 
-Currently, you can run the backend graph logic using the test script:
-
-```bash
-python backend/tests/test_profile_graph.py
+```ini
+POSTGRES_HOST=localhost
+POSTGRES_PORT=5434
+POSTGRES_USER=user
+POSTGRES_PASSWORD=pass
+POSTGRES_DB=bodybuilder_db
+GOOGLE_API_KEY=your-google-api-key
+RAPIDAPI_KEY=your-rapidapi-key
+JWT_SECRET_KEY=your_jwt_secret_key_here
 ```
 
-## Install packages
+> **Note:** Get your `RAPIDAPI_KEY` by signing up for the free plan at [ExerciseDB API](https://rapidapi.com/ascendapi/api/exercisedb-api1) .
 
-If you installed new packages, do the following:
+#### Run Database Migrations
+
+Initialize the Schema via Alembic :
 
 ```bash
-source ./venv/bin/activate # change the path according to your shell type
-                           # If you are Windows user, .\venv\Scripts\activate
+cd backend
+alembic upgrade head
+```
+
+#### Start Backend Server
+
+```bash
+# Standard FastAPI execution
+uvicorn app.main:app --reload --port 8000
+
+# OR using LangGraph development tools
+langgraph dev
+```
+
+### 3. Frontend Setup
+
+Navigate to the frontend directory to set up the Vite React environment.
+
+#### Configure Frontend Environment
+
+Create a `.env` file in the `frontend` folder:
+
+```bash
+# frontend/.env
+VITE_API_URL=http://localhost:8000/api
+```
+
+#### Install and Run
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+## Development Workflow
+
+### Installing New Packages
+
+If you install new Python packages, ensure they are tracked:
+
+```bash
+# Activate venv first
 pip install <package-name>
-# freeze to make sure other people are using the same packages
 pip freeze > requirements.txt
 ```
 
+### Pre-commit Hooks
+
+This project uses `pre-commit` to ensure code quality. It will automatically run Linting and Formatting checks before every commit.
