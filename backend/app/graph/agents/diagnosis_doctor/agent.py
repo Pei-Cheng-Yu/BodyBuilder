@@ -1,16 +1,16 @@
 from app.graph.state import GraphState
 from langgraph.graph import END, START, StateGraph
 
-from .node import conlude_suggestion_node, get_weak_part_node
+from .node import announce_doctor_node, conlude_suggestion_node
 
 
 def build_doctor_graph():
     workflow = StateGraph(GraphState)
-    workflow.add_node("get_weak_part", get_weak_part_node)
+    workflow.add_node("announce_doctor", announce_doctor_node)
     workflow.add_node("conclude_suggestion", conlude_suggestion_node)
 
-    workflow.add_edge(START, "get_weak_part")
-    workflow.add_edge("get_weak_part", "conclude_suggestion")
+    workflow.add_edge(START, "announce_doctor")
+    workflow.add_edge("announce_doctor", "conclude_suggestion")
     workflow.add_edge("conclude_suggestion", END)
 
     return workflow.compile()

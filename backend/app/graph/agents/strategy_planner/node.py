@@ -36,11 +36,6 @@ class TempState(TypedDict):
     unstructured_weekly_plan: WeeklyNote
 
 
-def announce_strategy(state: GraphState):
-    feedback = "🧠 Designing your weekly training strategy…"
-    return {"system_feedback": feedback}
-
-
 async def strategy_scheduler_node(state: GraphState) -> TempState:
     print("🧠 Strategy Coach is planning the week...")
     doctor_suggestion = state.get("doctor_suggestion")

@@ -97,7 +97,7 @@ class InbodyMetrics(BaseModel):
 
 class UserProfile(BaseModel):
     model_config = ConfigDict(from_attributes=True)
-    gender: Optional[Literal["Male", "Female"]] = None
+    gender: Optional[str] = None
     age: Optional[int] = Field(default=18, gt=0, lt=120)
     user_goal: Optional[str] = None
     workout_frequency: int = Field(
