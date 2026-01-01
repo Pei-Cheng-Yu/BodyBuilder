@@ -1,7 +1,7 @@
 # BodyBuilder
 
 > AI-Driven Personalized  Fitness Consultant
-## Demo vedioi
+## Demo video
 
 [Link](https://drive.google.com/file/d/1reqXDsdfjA_BO4j-5Ik1LGYH5Yc1iyrT/view?usp=sharing)
 
@@ -286,5 +286,3 @@ graph TD;
         classDef first fill-opacity:0
         classDef last fill:#bfb6fc
 ```
-
-
