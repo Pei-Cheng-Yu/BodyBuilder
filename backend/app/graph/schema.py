@@ -3,23 +3,6 @@ from typing import Literal, Optional
 from pydantic import BaseModel, ConfigDict, Field, computed_field
 
 
-class BasicScanMetrics(BaseModel):
-    height_cm: float = Field(..., gt=50, lt=300, description="Height in cm")
-    weight_kg: float = Field(..., description="Total Weight in kg")
-    skeletal_muscle_mass_kg: float = Field(description="SMM 骨骼肌重 (kg)")
-    body_fat_percent: float = Field(description="PBF 體脂率 (%)")
-
-    basal_metabolic_rate: float = Field(description="BMR 基礎代謝率")
-    visceral_fat_level: Optional[int] = Field(
-        None, description="Visceral Fat Level 內臟脂肪等級 (Level 1-20)"
-    )
-    inbody_score: Optional[int] = Field(None, description="InBody Score 總分")
-    curve_type: str = Field(
-        ...,
-        description="The shape formed by Weight/Muscle/Fat bars. Options: 'C-Shape', 'I-Shape', 'D-Shape'",
-    )
-
-
 class SegmentalAnalysis(BaseModel):
     """部位肌肉量 (用於偵測不平衡)"""
 
